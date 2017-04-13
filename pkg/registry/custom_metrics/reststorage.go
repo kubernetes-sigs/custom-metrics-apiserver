@@ -19,23 +19,23 @@ package apiserver
 import (
 	"fmt"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metainternalversion "k8s.io/apimachinery/pkg/apis/meta/internalversion"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/registry/rest"
-	"k8s.io/metrics/pkg/apis/custom_metrics"
+	specificinstaller "k8s.io/custom-metrics-boilerplate/pkg/apiserver/installer/context"
 	"k8s.io/custom-metrics-boilerplate/pkg/provider"
+	"k8s.io/metrics/pkg/apis/custom_metrics"
 )
 
 type REST struct {
 	cmProvider provider.CustomMetricsProvider
 }
 
-var _ rest.KindProvider = &REST{}
 var _ rest.Storage = &REST{}
-var _ rest.GetterWithOptions = &REST{}
+var _ rest.Lister = &REST{}
 
 func NewREST(cmProvider provider.CustomMetricsProvider) *REST {
 	return &REST{
@@ -46,52 +46,80 @@ func NewREST(cmProvider provider.CustomMetricsProvider) *REST {
 // Implement Storage
 
 func (r *REST) New() runtime.Object {
+	return &custom_metrics.MetricValue{}
+}
+
+// Implement Lister
+
+func (r *REST) NewList() runtime.Object {
 	return &custom_metrics.MetricValueList{}
 }
 
-// Implement KindProvider
-
-func (r *REST) Kind() string {
-	return "MetricValueList"
-}
-
-func (r *REST) Get(ctx genericapirequest.Context, name string, options runtime.Object) (runtime.Object, error) {
-	var err error
+func (r *REST) List(ctx genericapirequest.Context, options *metainternalversion.ListOptions) (runtime.Object, error) {
+	// populate the label selector, defaulting to all
 	selector := labels.Everything()
-	if options != nil {
-		listOpts := options.(*metav1.ListOptions)
-		if listOpts.LabelSelector != "" {
-			selector, err = labels.Parse(listOpts.LabelSelector)
-			if err != nil {
-				return nil, err
-			}
+	if options != nil && options.LabelSelector != nil {
+		selector = options.LabelSelector
+	}
+
+	// grab the name, if present, from the field selector list options
+	// (this is how the list handler logic injects it)
+	// (otherwise we'd have to write a custom list handler)
+	name := "*"
+	if options != nil && options.FieldSelector != nil {
+		if nameMatch, required := options.FieldSelector.RequiresExactMatch("metadata.name"); required {
+			name = nameMatch
 		}
 	}
 
 	namespace := genericapirequest.NamespaceValue(ctx)
 
-	resourceRaw, metricName, ok := genericapirequest.ResourceInformationFrom(ctx)
+	resourceRaw, metricName, ok := specificinstaller.ResourceInformationFrom(ctx)
 	if !ok {
 		return nil, fmt.Errorf("unable to get resource and metric name from request")
 	}
 
 	groupResource := schema.ParseGroupResource(resourceRaw)
 
-	if namespace == "" {
-		if name == "*" {
-			return r.cmProvider.GetRootScopedMetricBySelector(groupResource, selector, metricName)
-		}
-
-		return r.cmProvider.GetRootScopedMetricByName(groupResource, name, metricName)
+	// handle metrics describing namespaces
+	if namespace != "" && resourceRaw == "metrics" {
+		// namespace-describing metrics have a path of /namespaces/$NS/metrics/$metric,
+		groupResource = schema.GroupResource{Resource: "namespaces"}
+		metricName = name
+		name = namespace
+		namespace = ""
 	}
 
+	// handle namespaced and root metrics
 	if name == "*" {
-		return r.cmProvider.GetNamespacedMetricBySelector(groupResource, namespace, selector, metricName)
+		return r.handleWildcardOp(namespace, groupResource, selector, metricName)
+	} else {
+		return r.handleIndividualOp(namespace, groupResource, name, metricName)
 	}
-
-	return r.cmProvider.GetNamespacedMetricByName(groupResource, namespace, name, metricName)
 }
 
-func (r *REST) NewGetOptions() (runtime.Object, bool, string) {
-	return &metav1.ListOptions{}, false, ""
+func (r *REST) handleIndividualOp(namespace string, groupResource schema.GroupResource, name string, metricName string) (*custom_metrics.MetricValueList, error) {
+	var err error
+	var singleRes *custom_metrics.MetricValue
+	if namespace == "" {
+		singleRes, err = r.cmProvider.GetRootScopedMetricByName(groupResource, name, metricName)
+	} else {
+		singleRes, err = r.cmProvider.GetNamespacedMetricByName(groupResource, namespace, name, metricName)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &custom_metrics.MetricValueList{
+		Items: []custom_metrics.MetricValue{*singleRes},
+	}, nil
+}
+
+func (r *REST) handleWildcardOp(namespace string, groupResource schema.GroupResource, selector labels.Selector, metricName string) (*custom_metrics.MetricValueList, error) {
+	if namespace == "" {
+		return r.cmProvider.GetRootScopedMetricBySelector(groupResource, selector, metricName)
+	} else {
+		return r.cmProvider.GetNamespacedMetricBySelector(groupResource, namespace, selector, metricName)
+	}
 }
