@@ -24,14 +24,10 @@ A sample implementation of this can be found in the file `sample-main.go`
 and `pkg/sample-cmd` directory.  You'll want to have the equivalent files
 in your project.
 
-### A note on Godeps
+### A note on Dependencies
 
-The vendored directory currently contains a copy of `k8s.io/apiserver`
-with a special patch applied to support the dynamic nature of the custom
-metrics API server
-([kubernetes/kubernetes#42845](https://github.com/kubernetes/kubernetes/pull/42845)).
-Until this functionality lands in the main `k8s.io/apiserver` repository,
-you should use the vendored copy here.
+You'll need to `glide install` dependencies before you can use this
+project.
 
 ## Compatibility
 
