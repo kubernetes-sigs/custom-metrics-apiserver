@@ -17,6 +17,8 @@ limitations under the License.
 package provider
 
 import (
+	"fmt"
+
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/metrics/pkg/apis/custom_metrics"
@@ -25,9 +27,17 @@ import (
 // MetricInfo describes a metric for a particular
 // fully-qualified group resource.
 type MetricInfo struct {
-	GroupResource          schema.GroupResource
-	Namespaced             bool
-	Metric                 string
+	GroupResource schema.GroupResource
+	Namespaced    bool
+	Metric        string
+}
+
+func (i MetricInfo) String() string {
+	if i.Namespaced {
+		return fmt.Sprintf("%s/%s(namespaced)", i.GroupResource.String(), i.Metric)
+	} else {
+		return fmt.Sprintf("%s/%s", i.GroupResource.String(), i.Metric)
+	}
 }
 
 // CustomMetricsProvider is a soruce of custom metrics
