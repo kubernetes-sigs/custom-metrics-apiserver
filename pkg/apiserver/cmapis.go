@@ -23,6 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	genericapi "k8s.io/apiserver/pkg/endpoints"
 	genericapiserver "k8s.io/apiserver/pkg/server"
+	"k8s.io/apiserver/pkg/endpoints/discovery"
 
 	specificapi "k8s.io/custom-metrics-boilerplate/pkg/apiserver/installer"
 	"k8s.io/custom-metrics-boilerplate/pkg/provider"
@@ -43,19 +44,19 @@ func (s *CustomMetricsAdapterServer) InstallCustomMetricsAPI() error {
 		Version:      groupMeta.GroupVersion.Version,
 	}
 	apiGroup := metav1.APIGroup{
-		Name:             groupMeta.GroupVersion.String(),
+		Name:             groupMeta.GroupVersion.Group,
 		Versions:         []metav1.GroupVersionForDiscovery{groupVersion},
 		PreferredVersion: preferredVersionForDiscovery,
 	}
 
 	cmAPI := s.cmAPI(groupMeta, &groupMeta.GroupVersion)
 
-	if err := cmAPI.InstallREST(s.GenericAPIServer.HandlerContainer.Container); err != nil {
+	if err := cmAPI.InstallREST(s.GenericAPIServer.Handler.GoRestfulContainer); err != nil {
 		return err
 	}
 
-	path := genericapiserver.APIGroupPrefix + "/" + groupMeta.GroupVersion.Group
-	s.GenericAPIServer.HandlerContainer.Add(genericapi.NewGroupWebService(s.GenericAPIServer.Serializer, path, apiGroup))
+	s.GenericAPIServer.DiscoveryGroupManager.AddGroup(apiGroup)
+	s.GenericAPIServer.Handler.GoRestfulContainer.Add(discovery.NewAPIGroupHandler(s.GenericAPIServer.Serializer, apiGroup).WebService())
 
 	return nil
 }

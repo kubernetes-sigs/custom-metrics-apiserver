@@ -17,7 +17,7 @@ limitations under the License.
 package provider
 
 import (
-	"k8s.io/apiserver/pkg/endpoints/handlers"
+	"k8s.io/apiserver/pkg/endpoints/discovery"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -25,7 +25,7 @@ type customMetricsResourceLister struct {
 	provider CustomMetricsProvider
 }
 
-func NewResourceLister(provider CustomMetricsProvider) handlers.APIResourceLister {
+func NewResourceLister(provider CustomMetricsProvider) discovery.APIResourceLister {
 	return &customMetricsResourceLister{
 		provider: provider,
 	}

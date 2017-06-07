@@ -17,32 +17,28 @@ limitations under the License.
 package installer
 
 import (
-	"bytes"
 	"fmt"
 	"net/http"
-	"net/url"
 	gpath "path"
 	"reflect"
 	"strings"
 	"time"
 
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/conversion"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apiserver/pkg/endpoints"
 	"k8s.io/apiserver/pkg/endpoints/handlers"
 	"k8s.io/apiserver/pkg/endpoints/handlers/negotiation"
 	"k8s.io/apiserver/pkg/endpoints/metrics"
 	"k8s.io/apiserver/pkg/registry/rest"
 	"k8s.io/apiserver/pkg/endpoints/request"
+	"k8s.io/apiserver/pkg/endpoints/discovery"
 
 	"github.com/emicklei/go-restful"
-
-	specificcontext "k8s.io/custom-metrics-boilerplate/pkg/apiserver/installer/context"
 )
 
 // NB: the contents of this file should mostly be a subset of the functionality
@@ -74,7 +70,8 @@ func (g *MetricsAPIGroupVersion) InstallREST(container *restful.Container) error
 	if lister == nil {
 		return fmt.Errorf("must provide a dynamic lister for dynamic API groups")
 	}
-	endpoints.AddSupportedResourcesWebService(g.Serializer, ws, g.GroupVersion, lister)
+	versionDiscoveryHandler := discovery.NewAPIVersionHandler(g.Serializer, g.GroupVersion, lister)
+	versionDiscoveryHandler.AddToWebService(ws)
 	container.Add(ws)
 	return utilerrors.NewAggregate(registrationErrors)
 }
@@ -174,26 +171,11 @@ func (a *MetricsAPIInstaller) registerResourceHandlers(storage rest.Storage, ws 
 		return err
 	}
 
-	ctxFn := func(req *restful.Request) request.Context {
-		var ctx request.Context
-		if ctx != nil {
-			if existingCtx, ok := context.Get(req.Request); ok {
-				ctx = existingCtx
-			}
+	ctxFn := func(req *http.Request) request.Context {
+		if ctx, ok := context.Get(req); ok {
+			return request.WithUserAgent(ctx, req.Header.Get("User-Agent"))
 		}
-		if ctx == nil {
-			ctx = request.NewContext()
-		}
-
-		ctx = request.WithUserAgent(ctx, req.HeaderParameter("User-Agent"))
-
-		// inject the resource, subresource, and name here so that
-		// we don't have to write custom handler logic
-		resource := req.PathParameter("resource")
-		subresource := req.PathParameter("subresource")
-		ctx = specificcontext.WithResourceInformation(ctx, resource, subresource)
-
-		return ctx
+		return request.WithUserAgent(request.NewContext(), req.Header.Get("User-Agent"))
 	}
 
 	scope := mapping.Scope
@@ -218,51 +200,11 @@ func (a *MetricsAPIInstaller) registerResourceHandlers(storage rest.Storage, ws 
 		subresourceParam,
 	}
 	namespacedPath := scope.ParamName() + "/{" + scope.ArgumentName() + "}/{resource}/{name}/{subresource}"
-	namespacedPathPrefix := gpath.Join(a.prefix, scope.ParamName()) + "/"
-	itemPathFn := func(name, namespace, resource, subresource string) bytes.Buffer {
-		var buf bytes.Buffer
-		buf.WriteString(namespacedPathPrefix)
-		buf.WriteString(url.QueryEscape(namespace))
-		buf.WriteString("/")
-		buf.WriteString(url.QueryEscape(resource))
-		buf.WriteString("/")
-		buf.WriteString(url.QueryEscape(name))
-		buf.WriteString("/")
-		buf.WriteString(url.QueryEscape(subresource))
-		return buf
-	}
 
 	namespaceSpecificPath := scope.ParamName() + "/{" + scope.ArgumentName() + "}/metrics/{name}"
 	namespaceSpecificParams := []*restful.Parameter{
 		namespaceParam,
 		nameParam,
-	}
-	namespaceSpecificItemPathFn := func(name, namespace, resource, subresource string) bytes.Buffer {
-		var buf bytes.Buffer
-		buf.WriteString(namespacedPathPrefix)
-		buf.WriteString(url.QueryEscape(namespace))
-		buf.WriteString("/metrics/")
-		buf.WriteString(url.QueryEscape(name))
-		return buf
-	}
-	namespaceSpecificCtxFn := func(req *restful.Request) request.Context {
-		var ctx request.Context
-		if ctx != nil {
-			if existingCtx, ok := context.Get(req.Request); ok {
-				ctx = existingCtx
-			}
-		}
-		if ctx == nil {
-			ctx = request.NewContext()
-		}
-
-		ctx = request.WithUserAgent(ctx, req.HeaderParameter("User-Agent"))
-
-		// inject the resource, subresource, and name here so that
-		// we don't have to write custom handler logic
-		ctx = specificcontext.WithResourceInformation(ctx, "metrics", "")
-
-		return ctx
 	}
 
 	mediaTypes, streamMediaTypes := negotiation.MediaTypesForSerializer(a.group.Serializer)
@@ -292,8 +234,16 @@ func (a *MetricsAPIInstaller) registerResourceHandlers(storage rest.Storage, ws 
 
 	// we need one path for namespaced resources, one for non-namespaced resources
 	doc := "list custom metrics describing an object or objects"
-	reqScope.Namer = rootScopeNaming{scope, a.group.Linker, gpath.Join(a.prefix, rootScopedPath, "/"), "/{subresource}"}
-	rootScopedHandler := metrics.InstrumentRouteFunc("LIST", "custom-metrics", handlers.ListResource(lister, nil, reqScope, false, a.minRequestTimeout))
+	reqScope.Namer = MetricsNaming{
+		handlers.ContextBasedNaming{
+			GetContext: ctxFn,
+			SelfLinker: a.group.Linker,
+			ClusterScoped: true,
+			SelfLinkPathPrefix: a.prefix + "/",
+		},
+	}
+
+	rootScopedHandler := metrics.InstrumentRouteFunc("LIST", "custom-metrics", restfulListResource(lister, nil, reqScope, false, a.minRequestTimeout))
 
 	// install the root-scoped route
 	rootScopedRoute := ws.GET(rootScopedPath).To(rootScopedHandler).
@@ -310,8 +260,15 @@ func (a *MetricsAPIInstaller) registerResourceHandlers(storage rest.Storage, ws 
 	ws.Route(rootScopedRoute)
 
 	// install the namespace-scoped route
-	reqScope.Namer = scopeNaming{scope, a.group.Linker, itemPathFn, false}
-	namespacedHandler := metrics.InstrumentRouteFunc("LIST", "custom-metrics-namespaced", handlers.ListResource(lister, nil, reqScope, false, a.minRequestTimeout))
+	reqScope.Namer = MetricsNaming{
+		handlers.ContextBasedNaming{
+			GetContext: ctxFn,
+			SelfLinker: a.group.Linker,
+			ClusterScoped: false,
+			SelfLinkPathPrefix: gpath.Join(a.prefix, scope.ParamName()) + "/",
+		},
+	}
+	namespacedHandler := metrics.InstrumentRouteFunc("LIST", "custom-metrics-namespaced", restfulListResource(lister, nil, reqScope, false, a.minRequestTimeout))
 	namespacedRoute := ws.GET(namespacedPath).To(namespacedHandler).
 		Doc(doc).
 		Param(ws.QueryParameter("pretty", "If 'true', then the output is pretty printed.")).
@@ -326,9 +283,16 @@ func (a *MetricsAPIInstaller) registerResourceHandlers(storage rest.Storage, ws 
 	ws.Route(namespacedRoute)
 
 	// install the special route for metrics describing namespaces (last b/c we modify the context func)
-	reqScope.ContextFunc = namespaceSpecificCtxFn
-	reqScope.Namer = scopeNaming{scope, a.group.Linker, namespaceSpecificItemPathFn, false}
-	namespaceSpecificHandler := metrics.InstrumentRouteFunc("LIST", "custom-metrics-for-namespace", handlers.ListResource(lister, nil, reqScope, false, a.minRequestTimeout))
+	reqScope.ContextFunc = ctxFn
+	reqScope.Namer = MetricsNaming{
+		handlers.ContextBasedNaming{
+			GetContext: ctxFn,
+			SelfLinker: a.group.Linker,
+			ClusterScoped: false,
+			SelfLinkPathPrefix: gpath.Join(a.prefix, scope.ParamName()) + "/",
+		},
+	}
+	namespaceSpecificHandler := metrics.InstrumentRouteFunc("LIST", "custom-metrics-for-namespace", restfulListResource(lister, nil, reqScope, false, a.minRequestTimeout))
 	namespaceSpecificRoute := ws.GET(namespaceSpecificPath).To(namespaceSpecificHandler).
 		Doc(doc).
 		Param(ws.QueryParameter("pretty", "If 'true', then the output is pretty printed.")).
@@ -474,160 +438,39 @@ func typeToJSON(typeName string) string {
 	}
 }
 
-// rootScopeNaming reads only names from a request and ignores namespaces. It implements ScopeNamer
-// for root scoped resources.
-type rootScopeNaming struct {
-	scope meta.RESTScope
-	runtime.SelfLinker
-	pathPrefix string
-	pathSuffix string
-}
-
-// rootScopeNaming implements ScopeNamer
-var _ handlers.ScopeNamer = rootScopeNaming{}
-
-// Namespace returns an empty string because root scoped objects have no namespace.
-func (n rootScopeNaming) Namespace(req *restful.Request) (namespace string, err error) {
-	return "", nil
-}
-
-// Name returns the name from the path and an empty string for namespace, or an error if the
-// name is empty.
-func (n rootScopeNaming) Name(req *restful.Request) (namespace, name string, err error) {
-	name = req.PathParameter("name")
-	if len(name) == 0 {
-		return "", "", errEmptyName
-	}
-	return "", name, nil
-}
-
-// GenerateLink returns the appropriate path and query to locate an object by its canonical path.
-func (n rootScopeNaming) GenerateLink(req *restful.Request, obj runtime.Object) (uri string, err error) {
-	_, name, err := n.ObjectName(obj)
-	if err != nil {
-		return "", err
-	}
-	if len(name) == 0 {
-		_, name, err = n.Name(req)
-		if err != nil {
-			return "", err
-		}
-	}
-	return n.pathPrefix + url.QueryEscape(name) + n.pathSuffix, nil
-}
-
-// GenerateListLink returns the appropriate path and query to locate a list by its canonical path.
-func (n rootScopeNaming) GenerateListLink(req *restful.Request) (uri string, err error) {
-	if len(req.Request.URL.RawPath) > 0 {
-		return req.Request.URL.RawPath, nil
-	}
-	return req.Request.URL.EscapedPath(), nil
-}
-
-// ObjectName returns the name set on the object, or an error if the
-// name cannot be returned. Namespace is empty
-// TODO: distinguish between objects with name/namespace and without via a specific error.
-func (n rootScopeNaming) ObjectName(obj runtime.Object) (namespace, name string, err error) {
-	name, err = n.SelfLinker.Name(obj)
-	if err != nil {
-		return "", "", err
-	}
-	if len(name) == 0 {
-		return "", "", errEmptyName
-	}
-	return "", name, nil
-}
-
-// scopeNaming returns naming information from a request. It implements ScopeNamer for
-// namespace scoped resources.
-type scopeNaming struct {
-	scope meta.RESTScope
-	runtime.SelfLinker
-	itemPathFn    func(name, namespace, resource, subresource string) bytes.Buffer
-	allNamespaces bool
-}
-
-// scopeNaming implements ScopeNamer
-var _ handlers.ScopeNamer = scopeNaming{}
-
-// Namespace returns the namespace from the path or the default.
-func (n scopeNaming) Namespace(req *restful.Request) (namespace string, err error) {
-	if n.allNamespaces {
-		return "", nil
-	}
-	namespace = req.PathParameter(n.scope.ArgumentName())
-	if len(namespace) == 0 {
-		// a URL was constructed without the namespace, or this method was invoked
-		// on an object without a namespace path parameter.
-		return "", fmt.Errorf("no namespace parameter found on request")
-	}
-	return namespace, nil
-}
-
-// Name returns the name from the path, the namespace (or default), or an error if the
-// name is empty.
-func (n scopeNaming) Name(req *restful.Request) (namespace, name string, err error) {
-	namespace, _ = n.Namespace(req)
-	name = req.PathParameter("name")
-	if len(name) == 0 {
-		return "", "", errEmptyName
-	}
-	return
-}
-
-func (n scopeNaming) reqResource(req *restful.Request) (resource, subresource string) {
-	return req.PathParameter("resource"), req.PathParameter("subresource")
-}
-
-// GenerateLink returns the appropriate path and query to locate an object by its canonical path.
-func (n scopeNaming) GenerateLink(req *restful.Request, obj runtime.Object) (uri string, err error) {
-	namespace, name, err := n.ObjectName(obj)
-	if err != nil {
-		return "", err
-	}
-	if len(namespace) == 0 && len(name) == 0 {
-		namespace, name, err = n.Name(req)
-		if err != nil {
-			return "", err
-		}
-	}
-	if len(name) == 0 {
-		return "", errEmptyName
-	}
-
-	resource, subresource := n.reqResource(req)
-
-	result := n.itemPathFn(name, namespace, resource, subresource)
-	return result.String(), nil
-}
-
-// GenerateListLink returns the appropriate path and query to locate a list by its canonical path.
-func (n scopeNaming) GenerateListLink(req *restful.Request) (uri string, err error) {
-	if len(req.Request.URL.RawPath) > 0 {
-		return req.Request.URL.RawPath, nil
-	}
-	return req.Request.URL.EscapedPath(), nil
-}
-
-// ObjectName returns the name and namespace set on the object, or an error if the
-// name cannot be returned.
-// TODO: distinguish between objects with name/namespace and without via a specific error.
-func (n scopeNaming) ObjectName(obj runtime.Object) (namespace, name string, err error) {
-	name, err = n.SelfLinker.Name(obj)
-	if err != nil {
-		return "", "", err
-	}
-	namespace, err = n.SelfLinker.Namespace(obj)
-	if err != nil {
-		return "", "", err
-	}
-	return namespace, name, err
-}
-
 // An interface to see if an object supports swagger documentation as a method
 type documentable interface {
 	SwaggerDoc() map[string]string
 }
 
-// errEmptyName is returned when API requests do not fill the name section of the path.
-var errEmptyName = errors.NewBadRequest("name must be provided")
+// MetricsNaming is similar to handlers.ContextBasedNaming, except that it handles
+// polymorphism over subresources.
+type MetricsNaming struct {
+	handlers.ContextBasedNaming
+}
+
+func (n MetricsNaming) GenerateLink(req *http.Request, obj runtime.Object) (uri string, err error) {
+	requestInfo, ok := request.RequestInfoFrom(n.GetContext(req))
+	if !ok {
+		return "", fmt.Errorf("missing requestInfo")
+	}
+
+	if requestInfo.Resource != "metrics" {
+		n.SelfLinkPathSuffix += "/" + requestInfo.Subresource
+	}
+
+	// since this is not a pointer receiver, it's ok to modify it here
+	// (since we copy around every method call)
+	if n.ClusterScoped {
+		n.SelfLinkPathPrefix += requestInfo.Resource + "/"
+		return n.ContextBasedNaming.GenerateLink(req, obj)
+	}
+
+	return n.ContextBasedNaming.GenerateLink(req, obj)
+}
+
+func restfulListResource(r rest.Lister, rw rest.Watcher, scope handlers.RequestScope, forceWatch bool, minRequestTimeout time.Duration) restful.RouteFunction {
+	return func(req *restful.Request, res *restful.Response) {
+		handlers.ListResource(r, rw, scope, forceWatch, minRequestTimeout)(res.ResponseWriter, req.Request)
+	}
+}
