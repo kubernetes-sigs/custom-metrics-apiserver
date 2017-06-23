@@ -40,8 +40,8 @@ import (
 	"k8s.io/metrics/pkg/apis/custom_metrics"
 	cmv1alpha1 "k8s.io/metrics/pkg/apis/custom_metrics/v1alpha1"
 
-	"k8s.io/custom-metrics-boilerplate/pkg/provider"
-	metricstorage "k8s.io/custom-metrics-boilerplate/pkg/registry/custom_metrics"
+	"github.com/directxman12/custom-metrics-boilerplate/pkg/provider"
+	metricstorage "github.com/directxman12/custom-metrics-boilerplate/pkg/registry/custom_metrics"
 
 )
 

@@ -12,8 +12,8 @@ implementation backed by fake data.
 ## How to use this repository
 
 In order to use this repository, you should vendor this repository at
-`k8s.io/custom-metrics-boilerplate`, and implement the
-`"k8s.io/custom-metrics-boilerplate/pkg/provider".CustomMetricsProvider`
+`github.com/directxman12/custom-metrics-boilerplate`, and implement the
+`"github.com/directxman12/custom-metrics-boilerplate/pkg/provider".CustomMetricsProvider`
 interface.  You can then pass this to the main setup functions.
 
 The `pkg/cmd` package contains the building blocks of the actual API

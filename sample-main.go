@@ -23,7 +23,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/util/logs"
-	"k8s.io/custom-metrics-boilerplate/pkg/sample-cmd/server"
+	"github.com/directxman12/custom-metrics-boilerplate/pkg/sample-cmd/server"
 )
 
 func main() {

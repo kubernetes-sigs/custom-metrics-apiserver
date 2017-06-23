@@ -25,8 +25,8 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	coreclient "k8s.io/client-go/kubernetes/typed/core/v1"
 
-	"k8s.io/custom-metrics-boilerplate/pkg/cmd/server"
-	"k8s.io/custom-metrics-boilerplate/pkg/sample-cmd/provider"
+	"github.com/directxman12/custom-metrics-boilerplate/pkg/cmd/server"
+	"github.com/directxman12/custom-metrics-boilerplate/pkg/sample-cmd/provider"
 )
 
 // NewCommandStartMaster provides a CLI handler for 'start master' command
