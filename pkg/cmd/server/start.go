@@ -23,7 +23,7 @@ import (
 
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	genericoptions "k8s.io/apiserver/pkg/server/options"
-	"k8s.io/custom-metrics-boilerplate/pkg/apiserver"
+	"github.com/directxman12/custom-metrics-boilerplate/pkg/apiserver"
 )
 
 type CustomMetricsAdapterServerOptions struct {

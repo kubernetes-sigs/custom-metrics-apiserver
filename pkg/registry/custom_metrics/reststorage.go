@@ -25,9 +25,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/registry/rest"
-	specificinstaller "k8s.io/custom-metrics-boilerplate/pkg/apiserver/installer/context"
-	"k8s.io/custom-metrics-boilerplate/pkg/provider"
+	"github.com/directxman12/custom-metrics-boilerplate/pkg/provider"
 	"k8s.io/metrics/pkg/apis/custom_metrics"
+	"k8s.io/apiserver/pkg/endpoints/request"
 )
 
 type REST struct {
@@ -74,10 +74,13 @@ func (r *REST) List(ctx genericapirequest.Context, options *metainternalversion.
 
 	namespace := genericapirequest.NamespaceValue(ctx)
 
-	resourceRaw, metricName, ok := specificinstaller.ResourceInformationFrom(ctx)
+	requestInfo, ok := request.RequestInfoFrom(ctx)
 	if !ok {
 		return nil, fmt.Errorf("unable to get resource and metric name from request")
 	}
+
+	resourceRaw := requestInfo.Resource
+	metricName := requestInfo.Subresource
 
 	groupResource := schema.ParseGroupResource(resourceRaw)
 
