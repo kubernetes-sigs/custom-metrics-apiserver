@@ -1,5 +1,5 @@
-hash: 807f261d8170be02e0c3802e4d005c334a04419a8b2e5f75d68498385202f5ff
-updated: 2017-06-07T14:38:39.211756323-04:00
+hash: 8ef6bf322e35b7e8a8fe2d27c78eea5bd4e653f9e4965a4595fda63f209edee3
+updated: 2017-07-06T15:29:56.092753806-04:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -192,6 +192,11 @@ imports:
   version: f62e98d28ab7ad31d707ba837a966378465c7b57
 - name: github.com/spf13/pflag
   version: 9ff6c6923cfffbcd502984b8e0c80539a94968b7
+- name: github.com/stretchr/testify
+  version: 69483b4bd14f5845b5a1e55bca19e954e827f1d0
+  subpackages:
+  - assert
+  - require
 - name: github.com/ugorji/go
   version: ded73eae5db7e7a0ef6f55aace87a2873c5d2b74
   subpackages:
@@ -491,4 +496,8 @@ imports:
   - pkg/apis/custom_metrics
   - pkg/apis/custom_metrics/install
   - pkg/apis/custom_metrics/v1alpha1
-testImports: []
+testImports:
+- name: github.com/pmezard/go-difflib
+  version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
+  subpackages:
+  - difflib

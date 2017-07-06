@@ -48,18 +48,23 @@ func NewFakeProvider(client coreclient.CoreV1Interface) provider.CustomMetricsPr
 	}
 }
 
-func (p *incrementalTestingProvider) valueFor(groupResource schema.GroupResource, metricName string, namespaced bool) int64 {
+func (p *incrementalTestingProvider) valueFor(groupResource schema.GroupResource, metricName string, namespaced bool) (int64, error) {
 	info := provider.MetricInfo{
 		GroupResource: groupResource,
 		Metric:        metricName,
 		Namespaced:    namespaced,
 	}
 
+	info, _, err := info.Normalized(api.Registry.RESTMapper())
+	if err != nil {
+		return 0, err
+	}
+
 	value := p.values[info]
 	value += 1
 	p.values[info] = value
 
-	return value
+	return value, nil
 }
 
 func (p *incrementalTestingProvider) metricFor(value int64, groupResource schema.GroupResource, namespace string, name string, metricName string) (*custom_metrics.MetricValue, error) {
@@ -117,12 +122,18 @@ func (p *incrementalTestingProvider) metricsFor(totalValue int64, groupResource 
 }
 
 func (p *incrementalTestingProvider) GetRootScopedMetricByName(groupResource schema.GroupResource, name string, metricName string) (*custom_metrics.MetricValue, error) {
-	value := p.valueFor(groupResource, metricName, false)
+	value, err := p.valueFor(groupResource, metricName, false)
+	if err != nil {
+		return nil, err
+	}
 	return p.metricFor(value, groupResource, "", name, metricName)
 }
 
 func (p *incrementalTestingProvider) GetRootScopedMetricBySelector(groupResource schema.GroupResource, selector labels.Selector, metricName string) (*custom_metrics.MetricValueList, error) {
-	totalValue := p.valueFor(groupResource, metricName, false)
+	totalValue, err := p.valueFor(groupResource, metricName, false)
+	if err != nil {
+		return nil, err
+	}
 
 	// TODO: work for objects not in core v1
 	matchingObjectsRaw, err := p.client.RESTClient().Get().
@@ -137,12 +148,18 @@ func (p *incrementalTestingProvider) GetRootScopedMetricBySelector(groupResource
 }
 
 func (p *incrementalTestingProvider) GetNamespacedMetricByName(groupResource schema.GroupResource, namespace string, name string, metricName string) (*custom_metrics.MetricValue, error) {
-	value := p.valueFor(groupResource, metricName, true)
+	value, err := p.valueFor(groupResource, metricName, true)
+	if err != nil {
+		return nil, err
+	}
 	return p.metricFor(value, groupResource, namespace, name, metricName)
 }
 
 func (p *incrementalTestingProvider) GetNamespacedMetricBySelector(groupResource schema.GroupResource, namespace string, selector labels.Selector, metricName string) (*custom_metrics.MetricValueList, error) {
-	totalValue := p.valueFor(groupResource, metricName, true)
+	totalValue, err := p.valueFor(groupResource, metricName, true)
+	if err != nil {
+		return nil, err
+	}
 
 	// TODO: work for objects not in core v1
 	matchingObjectsRaw, err := p.client.RESTClient().Get().
