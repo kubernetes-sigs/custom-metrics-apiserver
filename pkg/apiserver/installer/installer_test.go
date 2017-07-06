@@ -76,4 +76,3 @@ func TestScopeNamingGenerateLink(t *testing.T) {
 		t.Errorf("Unexpected error %v", err)
 	}
 }
-

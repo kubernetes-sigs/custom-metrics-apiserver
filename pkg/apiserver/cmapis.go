@@ -22,8 +22,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	genericapi "k8s.io/apiserver/pkg/endpoints"
-	genericapiserver "k8s.io/apiserver/pkg/server"
 	"k8s.io/apiserver/pkg/endpoints/discovery"
+	genericapiserver "k8s.io/apiserver/pkg/server"
 
 	specificapi "github.com/directxman12/custom-metrics-boilerplate/pkg/apiserver/installer"
 	"github.com/directxman12/custom-metrics-boilerplate/pkg/provider"

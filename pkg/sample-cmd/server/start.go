@@ -17,13 +17,13 @@ limitations under the License.
 package server
 
 import (
-	"io"
 	"fmt"
+	"io"
 
 	"github.com/spf13/cobra"
+	coreclient "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-	coreclient "k8s.io/client-go/kubernetes/typed/core/v1"
 
 	"github.com/directxman12/custom-metrics-boilerplate/pkg/cmd/server"
 	"github.com/directxman12/custom-metrics-boilerplate/pkg/sample-cmd/provider"
@@ -62,7 +62,6 @@ func NewCommandStartSampleAdapterServer(out, errOut io.Writer, stopCh <-chan str
 	flags.StringVar(&o.RemoteKubeConfigFile, "lister-kubeconfig", o.RemoteKubeConfigFile, ""+
 		"kubeconfig file pointing at the 'core' kubernetes server with enough rights to list "+
 		"any described objets")
-
 
 	return cmd
 }

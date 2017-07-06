@@ -95,7 +95,7 @@ func (c completedConfig) New(cmProvider provider.CustomMetricsProvider) (*Custom
 
 	s := &CustomMetricsAdapterServer{
 		GenericAPIServer: genericServer,
-		Provider: cmProvider,
+		Provider:         cmProvider,
 	}
 
 	if err := s.InstallCustomMetricsAPI(); err != nil {
