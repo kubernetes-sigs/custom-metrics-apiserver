@@ -55,6 +55,8 @@ func (p *incrementalTestingProvider) valueFor(groupResource schema.GroupResource
 		Namespaced:    namespaced,
 	}
 
+	info = info.Normalized(api.Registry.RESTMapper())
+
 	value := p.values[info]
 	value += 1
 	p.values[info] = value
