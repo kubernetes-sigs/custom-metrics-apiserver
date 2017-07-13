@@ -16,15 +16,15 @@ limitations under the License.
 package installer
 
 import (
-	"bytes"
+	"net/http"
 	"testing"
 
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apiserver/pkg/endpoints/request"
+	"k8s.io/apiserver/pkg/endpoints/handlers"
 	"k8s.io/client-go/pkg/api"
 
-	"github.com/emicklei/go-restful"
 )
 
 type setTestSelfLinker struct {
@@ -54,13 +54,19 @@ func TestScopeNamingGenerateLink(t *testing.T) {
 		name:        "foo",
 		namespace:   "other",
 	}
-	s := scopeNaming{
-		meta.RESTScopeNamespace,
-		selfLinker,
-		func(name, namespace, resource, subresource string) bytes.Buffer {
-			return *bytes.NewBufferString("/api/v1/namespaces/" + namespace + "/services/" + name)
+	ctxFn := func(req *http.Request) request.Context {
+		info := &request.RequestInfo{
+			Resource: "services",
+		}
+		return request.WithRequestInfo(request.NewContext(), info)
+	}
+	s := MetricsNaming{
+		handlers.ContextBasedNaming{
+			GetContext: ctxFn,
+			SelfLinker: selfLinker,
+			ClusterScoped: false,
+			SelfLinkPathPrefix: "/api/v1/",
 		},
-		true,
 	}
 	service := &api.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -71,8 +77,8 @@ func TestScopeNamingGenerateLink(t *testing.T) {
 			Kind: "Service",
 		},
 	}
-	_, err := s.GenerateLink(&restful.Request{}, service)
+	_, err := s.GenerateLink(&http.Request{}, service)
 	if err != nil {
-		t.Errorf("Unexpected error %v", err)
+		t.Errorf("Unexpected error: %v", err)
 	}
 }

@@ -35,6 +35,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	genericapi "k8s.io/apiserver/pkg/endpoints"
 	"k8s.io/apiserver/pkg/endpoints/request"
+	genericapifilters "k8s.io/apiserver/pkg/endpoints/filters"
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	"k8s.io/metrics/pkg/apis/custom_metrics"
 	"k8s.io/metrics/pkg/apis/custom_metrics/install"
@@ -107,6 +108,7 @@ func handle(prov provider.CustomMetricsProvider) http.Handler {
 	container.Router(restful.CurlyRouter{})
 	mux := container.ServeMux
 	resourceStorage := metricstorage.NewREST(prov)
+	reqContextMapper := request.NewRequestContextMapper()
 	group := &MetricsAPIGroupVersion{
 		DynamicStorage: resourceStorage,
 		APIGroupVersion: &genericapi.APIGroupVersion{
@@ -123,7 +125,7 @@ func handle(prov provider.CustomMetricsProvider) http.Handler {
 			Linker:          groupMeta.SelfLinker,
 			Mapper:          groupMeta.RESTMapper,
 
-			Context:                request.NewRequestContextMapper(),
+			Context:                reqContextMapper,
 			OptionsExternalVersion: &schema.GroupVersion{Version: "v1"},
 
 			ResourceLister: provider.NewResourceLister(prov),
@@ -134,7 +136,11 @@ func handle(prov provider.CustomMetricsProvider) http.Handler {
 		panic(fmt.Sprintf("unable to install container %s: %v", group.GroupVersion, err))
 	}
 
-	return &defaultAPIServer{mux, container}
+	var handler http.Handler = &defaultAPIServer{mux, container}
+	reqInfoResolver := genericapiserver.NewRequestInfoResolver(&genericapiserver.Config{})
+	handler = genericapifilters.WithRequestInfo(handler, reqInfoResolver, reqContextMapper)
+	handler = request.WithRequestContext(handler, reqContextMapper)
+	return handler
 }
 
 type fakeProvider struct {
