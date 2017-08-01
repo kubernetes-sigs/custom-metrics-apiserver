@@ -1,4 +1,4 @@
 *.swp
 *~
-sample-main
 vendor
+_output

@@ -19,15 +19,15 @@ package apiserver
 import (
 	"fmt"
 
+	"github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/provider"
 	metainternalversion "k8s.io/apimachinery/pkg/apis/meta/internalversion"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apiserver/pkg/endpoints/request"
 	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/registry/rest"
-	"github.com/directxman12/custom-metrics-boilerplate/pkg/provider"
 	"k8s.io/metrics/pkg/apis/custom_metrics"
-	"k8s.io/apiserver/pkg/endpoints/request"
 )
 
 type REST struct {

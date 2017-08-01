@@ -1,4 +1,4 @@
-package: github.com/directxman12/custom-metrics-boilerplate
+package: github.com/kubernetes-incubator/custom-metrics-apiserver
 import:
 - package: github.com/emicklei/go-restful
 - package: github.com/spf13/cobra

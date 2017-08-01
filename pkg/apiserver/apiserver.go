@@ -26,7 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/version"
 	genericapiserver "k8s.io/apiserver/pkg/server"
 
-	"github.com/directxman12/custom-metrics-boilerplate/pkg/provider"
+	"github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/provider"
 	"k8s.io/metrics/pkg/apis/custom_metrics/install"
 )
 
@@ -95,7 +95,7 @@ func (c completedConfig) New(cmProvider provider.CustomMetricsProvider) (*Custom
 
 	s := &CustomMetricsAdapterServer{
 		GenericAPIServer: genericServer,
-		Provider: cmProvider,
+		Provider:         cmProvider,
 	}
 
 	if err := s.InstallCustomMetricsAPI(); err != nil {

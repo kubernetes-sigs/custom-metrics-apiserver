@@ -21,9 +21,9 @@ import (
 	"io"
 	"net"
 
+	"github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/apiserver"
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	genericoptions "k8s.io/apiserver/pkg/server/options"
-	"github.com/directxman12/custom-metrics-boilerplate/pkg/apiserver"
 )
 
 type CustomMetricsAdapterServerOptions struct {
