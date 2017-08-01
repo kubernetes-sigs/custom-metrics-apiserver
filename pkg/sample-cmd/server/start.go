@@ -19,13 +19,17 @@ package server
 import (
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/spf13/cobra"
-	coreclient "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/discovery"
+	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 
 	"github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/cmd/server"
+	"github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/dynamicmapper"
 	"github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/sample-cmd/provider"
 )
 
@@ -34,6 +38,7 @@ func NewCommandStartSampleAdapterServer(out, errOut io.Writer, stopCh <-chan str
 	baseOpts := server.NewCustomMetricsAdapterServerOptions(out, errOut)
 	o := SampleAdapterServerOptions{
 		CustomMetricsAdapterServerOptions: baseOpts,
+		DiscoveryInterval:                 10 * time.Minute,
 	}
 
 	cmd := &cobra.Command{
@@ -62,6 +67,8 @@ func NewCommandStartSampleAdapterServer(out, errOut io.Writer, stopCh <-chan str
 	flags.StringVar(&o.RemoteKubeConfigFile, "lister-kubeconfig", o.RemoteKubeConfigFile, ""+
 		"kubeconfig file pointing at the 'core' kubernetes server with enough rights to list "+
 		"any described objets")
+	flags.DurationVar(&o.DiscoveryInterval, "discovery-interval", o.DiscoveryInterval, ""+
+		"interval at which to refresh API discovery information")
 
 	return cmd
 }
@@ -85,12 +92,22 @@ func (o SampleAdapterServerOptions) RunCustomMetricsAdapterServer(stopCh <-chan 
 		return fmt.Errorf("unable to construct lister client config to initialize provider: %v", err)
 	}
 
-	client, err := coreclient.NewForConfig(clientConfig)
+	discoveryClient, err := discovery.NewDiscoveryClientForConfig(clientConfig)
+	if err != nil {
+		return fmt.Errorf("unable to construct discovery client for dynamic client: %v", err)
+	}
+
+	dynamicMapper, err := dynamicmapper.NewRESTMapper(discoveryClient, api.Registry.InterfacesFor, o.DiscoveryInterval)
+	if err != nil {
+		return fmt.Errorf("unable to construct dynamic discovery mapper: %v", err)
+	}
+
+	clientPool := dynamic.NewClientPool(clientConfig, dynamicMapper, dynamic.LegacyAPIPathResolverFunc)
 	if err != nil {
 		return fmt.Errorf("unable to construct lister client to initialize provider: %v", err)
 	}
 
-	cmProvider := provider.NewFakeProvider(client)
+	cmProvider := provider.NewFakeProvider(clientPool, dynamicMapper)
 
 	server, err := config.Complete().New(cmProvider)
 	if err != nil {
@@ -104,4 +121,6 @@ type SampleAdapterServerOptions struct {
 
 	// RemoteKubeConfigFile is the config used to list pods from the master API server
 	RemoteKubeConfigFile string
+	// DiscoveryInterval is the interval at which discovery information is refreshed
+	DiscoveryInterval time.Duration
 }

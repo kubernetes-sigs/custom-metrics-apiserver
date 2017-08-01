@@ -20,14 +20,15 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/golang/glog"
+	apierr "k8s.io/apimachinery/pkg/api/errors"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/client-go/kubernetes/scheme"
-	coreclient "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/pkg/api"
 	_ "k8s.io/client-go/pkg/api/install"
 	"k8s.io/metrics/pkg/apis/custom_metrics"
@@ -36,14 +37,16 @@ import (
 )
 
 type incrementalTestingProvider struct {
-	client coreclient.CoreV1Interface
+	client dynamic.ClientPool
+	mapper apimeta.RESTMapper
 
 	values map[provider.MetricInfo]int64
 }
 
-func NewFakeProvider(client coreclient.CoreV1Interface) provider.CustomMetricsProvider {
+func NewFakeProvider(client dynamic.ClientPool, mapper apimeta.RESTMapper) provider.CustomMetricsProvider {
 	return &incrementalTestingProvider{
 		client: client,
+		mapper: mapper,
 		values: make(map[provider.MetricInfo]int64),
 	}
 }
@@ -55,7 +58,7 @@ func (p *incrementalTestingProvider) valueFor(groupResource schema.GroupResource
 		Namespaced:    namespaced,
 	}
 
-	info, _, err := info.Normalized(api.Registry.RESTMapper())
+	info, _, err := info.Normalized(p.mapper)
 	if err != nil {
 		return 0, err
 	}
@@ -68,11 +71,7 @@ func (p *incrementalTestingProvider) valueFor(groupResource schema.GroupResource
 }
 
 func (p *incrementalTestingProvider) metricFor(value int64, groupResource schema.GroupResource, namespace string, name string, metricName string) (*custom_metrics.MetricValue, error) {
-	group, err := api.Registry.Group(groupResource.Group)
-	if err != nil {
-		return nil, err
-	}
-	kind, err := api.Registry.RESTMapper().KindFor(groupResource.WithVersion(group.GroupVersion.Version))
+	kind, err := p.mapper.KindFor(groupResource.WithVersion(""))
 	if err != nil {
 		return nil, err
 	}
@@ -130,17 +129,27 @@ func (p *incrementalTestingProvider) GetRootScopedMetricByName(groupResource sch
 }
 
 func (p *incrementalTestingProvider) GetRootScopedMetricBySelector(groupResource schema.GroupResource, selector labels.Selector, metricName string) (*custom_metrics.MetricValueList, error) {
+	// construct a client to list the names of objects matching the label selector
+	client, err := p.client.ClientForGroupVersionResource(groupResource.WithVersion(""))
+	if err != nil {
+		glog.Errorf("unable to construct dynamic client to list matching resource names: %v", err)
+		// don't leak implementation details to the user
+		return nil, apierr.NewInternalError(fmt.Errorf("unable to list matching resources"))
+	}
+
 	totalValue, err := p.valueFor(groupResource, metricName, false)
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO: work for objects not in core v1
-	matchingObjectsRaw, err := p.client.RESTClient().Get().
-		Resource(groupResource.Resource).
-		VersionedParams(&metav1.ListOptions{LabelSelector: selector.String()}, scheme.ParameterCodec).
-		Do().
-		Get()
+	// we can construct a this APIResource ourself, since the dynamic client only uses Name and Namespaced
+	apiRes := &metav1.APIResource{
+		Name:       groupResource.Resource,
+		Namespaced: false,
+	}
+
+	matchingObjectsRaw, err := client.Resource(apiRes, "").
+		List(metav1.ListOptions{LabelSelector: selector.String()})
 	if err != nil {
 		return nil, err
 	}
@@ -156,18 +165,27 @@ func (p *incrementalTestingProvider) GetNamespacedMetricByName(groupResource sch
 }
 
 func (p *incrementalTestingProvider) GetNamespacedMetricBySelector(groupResource schema.GroupResource, namespace string, selector labels.Selector, metricName string) (*custom_metrics.MetricValueList, error) {
+	// construct a client to list the names of objects matching the label selector
+	client, err := p.client.ClientForGroupVersionResource(groupResource.WithVersion(""))
+	if err != nil {
+		glog.Errorf("unable to construct dynamic client to list matching resource names: %v", err)
+		// don't leak implementation details to the user
+		return nil, apierr.NewInternalError(fmt.Errorf("unable to list matching resources"))
+	}
+
 	totalValue, err := p.valueFor(groupResource, metricName, true)
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO: work for objects not in core v1
-	matchingObjectsRaw, err := p.client.RESTClient().Get().
-		Namespace(namespace).
-		Resource(groupResource.Resource).
-		VersionedParams(&metav1.ListOptions{LabelSelector: selector.String()}, scheme.ParameterCodec).
-		Do().
-		Get()
+	// we can construct a this APIResource ourself, since the dynamic client only uses Name and Namespaced
+	apiRes := &metav1.APIResource{
+		Name:       groupResource.Resource,
+		Namespaced: true,
+	}
+
+	matchingObjectsRaw, err := client.Resource(apiRes, namespace).
+		List(metav1.ListOptions{LabelSelector: selector.String()})
 	if err != nil {
 		return nil, err
 	}
