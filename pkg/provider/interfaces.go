@@ -19,6 +19,7 @@ package provider
 import (
 	"fmt"
 
+	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/metrics/pkg/apis/custom_metrics"
@@ -38,6 +39,25 @@ func (i MetricInfo) String() string {
 	} else {
 		return fmt.Sprintf("%s/%s", i.GroupResource.String(), i.Metric)
 	}
+}
+
+// Normalized returns a copy of the current MetricInfo with the GroupResource resolved using the
+// provided REST mapper, to ensure consistent pluralization, etc, for use when looking up or comparing
+// the MetricInfo.  It also returns the singular form of the GroupResource associated with the given
+// MetricInfo.
+func (i MetricInfo) Normalized(mapper apimeta.RESTMapper) (normalizedInfo MetricInfo, singluarResource string, err error) {
+	normalizedGroupRes, err := mapper.ResourceFor(i.GroupResource.WithVersion(""))
+	if err != nil {
+		return i, "", err
+	}
+	i.GroupResource = normalizedGroupRes.GroupResource()
+
+	singularResource, err := mapper.ResourceSingularizer(i.GroupResource.Resource)
+	if err != nil {
+		return i, "", err
+	}
+
+	return i, singularResource, nil
 }
 
 // CustomMetricsProvider is a soruce of custom metrics
