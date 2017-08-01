@@ -32,7 +32,7 @@ import (
 	_ "k8s.io/client-go/pkg/api/install"
 	"k8s.io/metrics/pkg/apis/custom_metrics"
 
-	"github.com/directxman12/custom-metrics-boilerplate/pkg/provider"
+	"github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/provider"
 )
 
 type incrementalTestingProvider struct {

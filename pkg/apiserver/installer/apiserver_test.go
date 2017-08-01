@@ -40,8 +40,8 @@ import (
 	"k8s.io/metrics/pkg/apis/custom_metrics/install"
 	cmv1alpha1 "k8s.io/metrics/pkg/apis/custom_metrics/v1alpha1"
 
-	"github.com/directxman12/custom-metrics-boilerplate/pkg/provider"
-	metricstorage "github.com/directxman12/custom-metrics-boilerplate/pkg/registry/custom_metrics"
+	"github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/provider"
+	metricstorage "github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/registry/custom_metrics"
 )
 
 // defaultAPIServer exposes nested objects for testability.

@@ -25,9 +25,9 @@ import (
 	"k8s.io/apiserver/pkg/endpoints/discovery"
 	genericapiserver "k8s.io/apiserver/pkg/server"
 
-	specificapi "github.com/directxman12/custom-metrics-boilerplate/pkg/apiserver/installer"
-	"github.com/directxman12/custom-metrics-boilerplate/pkg/provider"
-	metricstorage "github.com/directxman12/custom-metrics-boilerplate/pkg/registry/custom_metrics"
+	specificapi "github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/apiserver/installer"
+	"github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/provider"
+	metricstorage "github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/registry/custom_metrics"
 	"k8s.io/metrics/pkg/apis/custom_metrics"
 )
 
