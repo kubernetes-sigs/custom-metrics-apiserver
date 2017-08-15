@@ -1,4 +1,4 @@
-# Custom Metrics Adpater Server Boilerplate
+# Custom Metrics Adapter Server Boilerplate
 
 ## Purpose
 
@@ -41,7 +41,7 @@ page](http://kubernetes.io/community/).
 
 You can reach the maintainers of this repository at:
 
-- Slack: #sig-instrumention (on https://kubernetes.slack.com -- get an
+- Slack: #sig-instrumentation (on https://kubernetes.slack.com -- get an
   invite at slack.kubernetes.io)
 - Mailing List:
   https://groups.google.com/forum/#!forum/kubernetes-sig-instrumentation
@@ -51,6 +51,6 @@ You can reach the maintainers of this repository at:
 Participation in the Kubernetes community is governed by the [Kubernetes
 Code of Conduct](code-of-conduct.md).
 
-### Contibution Guidelines
+### Contribution Guidelines
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for more information.
