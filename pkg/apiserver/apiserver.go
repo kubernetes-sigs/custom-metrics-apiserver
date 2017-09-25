@@ -66,29 +66,22 @@ type CustomMetricsAdapterServer struct {
 }
 
 type completedConfig struct {
-	*Config
+	genericapiserver.CompletedConfig
 }
 
 // Complete fills in any fields not set that are required to have valid data. It's mutating the receiver.
 func (c *Config) Complete() completedConfig {
-	c.GenericConfig.Complete()
-
 	c.GenericConfig.Version = &version.Info{
 		Major: "1",
 		Minor: "0",
 	}
-
-	return completedConfig{c}
-}
-
-// SkipComplete provides a way to construct a server instance without config completion.
-func (c *Config) SkipComplete() completedConfig {
-	return completedConfig{c}
+	return completedConfig{c.GenericConfig.Complete(nil)}
 }
 
 // New returns a new instance of CustomMetricsAdapterServer from the given config.
-func (c completedConfig) New(cmProvider provider.CustomMetricsProvider) (*CustomMetricsAdapterServer, error) {
-	genericServer, err := c.Config.GenericConfig.SkipComplete().New(genericapiserver.EmptyDelegate) // completion is done in Complete, no need for a second time
+// name is used to differentiate for logging.
+func (c completedConfig) New(name string, cmProvider provider.CustomMetricsProvider) (*CustomMetricsAdapterServer, error) {
+	genericServer, err := c.CompletedConfig.New(name, genericapiserver.EmptyDelegate) // completion is done in Complete, no need for a second time
 	if err != nil {
 		return nil, err
 	}

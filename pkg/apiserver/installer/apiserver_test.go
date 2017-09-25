@@ -39,7 +39,7 @@ import (
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	"k8s.io/metrics/pkg/apis/custom_metrics"
 	"k8s.io/metrics/pkg/apis/custom_metrics/install"
-	cmv1alpha1 "k8s.io/metrics/pkg/apis/custom_metrics/v1alpha1"
+	cmv1beta1 "k8s.io/metrics/pkg/apis/custom_metrics/v1beta1"
 
 	"github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/provider"
 	metricstorage "github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/registry/custom_metrics"
@@ -127,9 +127,8 @@ func handle(prov provider.CustomMetricsProvider) http.Handler {
 
 			Context:                reqContextMapper,
 			OptionsExternalVersion: &schema.GroupVersion{Version: "v1"},
-
-			ResourceLister: provider.NewResourceLister(prov),
 		},
+		ResourceLister: provider.NewResourceLister(prov),
 	}
 
 	if err := group.InstallREST(container); err != nil {
@@ -320,7 +319,7 @@ func TestCustomMetricsAPI(t *testing.T) {
 		}
 
 		if v.ExpectedCount > 0 {
-			lst := &cmv1alpha1.MetricValueList{}
+			lst := &cmv1beta1.MetricValueList{}
 			if err := extractBody(response, lst); err != nil {
 				t.Errorf("unexpected error (%s): %v", k, err)
 				continue

@@ -56,7 +56,7 @@ func (s *CustomMetricsAdapterServer) InstallCustomMetricsAPI() error {
 	}
 
 	s.GenericAPIServer.DiscoveryGroupManager.AddGroup(apiGroup)
-	s.GenericAPIServer.Handler.GoRestfulContainer.Add(discovery.NewAPIGroupHandler(s.GenericAPIServer.Serializer, apiGroup).WebService())
+	s.GenericAPIServer.Handler.GoRestfulContainer.Add(discovery.NewAPIGroupHandler(s.GenericAPIServer.Serializer, apiGroup, s.GenericAPIServer.RequestContextMapper()).WebService())
 
 	return nil
 }
@@ -82,8 +82,8 @@ func (s *CustomMetricsAdapterServer) cmAPI(groupMeta *apimachinery.GroupMeta, gr
 			Context:                s.GenericAPIServer.RequestContextMapper(),
 			MinRequestTimeout:      s.GenericAPIServer.MinRequestTimeout(),
 			OptionsExternalVersion: &schema.GroupVersion{Version: "v1"},
-
-			ResourceLister: provider.NewResourceLister(s.Provider),
 		},
+
+		ResourceLister: provider.NewResourceLister(s.Provider),
 	}
 }

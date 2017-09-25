@@ -1,6 +1,9 @@
 package: github.com/kubernetes-incubator/custom-metrics-apiserver
 import:
 - package: github.com/emicklei/go-restful
+- package: github.com/emicklei/go-restful-swagger12
+- package: github.com/go-openapi/spec
+- package: github.com/golang/glog
 - package: github.com/spf13/cobra
 - package: k8s.io/apimachinery
   subpackages:
@@ -23,6 +26,7 @@ import:
 - package: k8s.io/apiserver
   subpackages:
   - pkg/endpoints
+  - pkg/endpoints/discovery
   - pkg/endpoints/handlers
   - pkg/endpoints/handlers/negotiation
   - pkg/endpoints/metrics
@@ -33,16 +37,20 @@ import:
   - pkg/util/logs
 - package: k8s.io/client-go
   subpackages:
-  - kubernetes/scheme
-  - kubernetes/typed/core/v1
+  - discovery
+  - dynamic
   - pkg/api
   - pkg/api/install
+  - pkg/api/v1
+  - pkg/version
   - rest
+  - testing
   - tools/clientcmd
 - package: k8s.io/metrics
   subpackages:
   - pkg/apis/custom_metrics
   - pkg/apis/custom_metrics/install
+testImport:
 - package: github.com/stretchr/testify
   version: ^1.1.4
   subpackages:
