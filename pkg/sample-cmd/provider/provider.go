@@ -29,8 +29,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
-	"k8s.io/client-go/pkg/api"
-	_ "k8s.io/client-go/pkg/api/install"
 	"k8s.io/metrics/pkg/apis/custom_metrics"
 
 	"github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/provider"
@@ -77,7 +75,7 @@ func (p *incrementalTestingProvider) metricFor(value int64, groupResource schema
 	}
 
 	return &custom_metrics.MetricValue{
-		DescribedObject: api.ObjectReference{
+		DescribedObject: custom_metrics.ObjectReference{
 			APIVersion: groupResource.Group + "/" + runtime.APIVersionInternal,
 			Kind:       kind.Kind,
 			Name:       name,
@@ -97,7 +95,7 @@ func (p *incrementalTestingProvider) metricsFor(totalValue int64, groupResource 
 	res := make([]custom_metrics.MetricValue, 0)
 
 	err := apimeta.EachListItem(list, func(item runtime.Object) error {
-		objMeta := item.(metav1.ObjectMetaAccessor).GetObjectMeta()
+		objMeta := item.(metav1.Object)
 		value, err := p.metricFor(0, groupResource, objMeta.GetNamespace(), objMeta.GetName(), metricName)
 		if err != nil {
 			return err

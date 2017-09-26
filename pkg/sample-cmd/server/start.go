@@ -22,9 +22,9 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
-	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 
@@ -97,7 +97,9 @@ func (o SampleAdapterServerOptions) RunCustomMetricsAdapterServer(stopCh <-chan 
 		return fmt.Errorf("unable to construct discovery client for dynamic client: %v", err)
 	}
 
-	dynamicMapper, err := dynamicmapper.NewRESTMapper(discoveryClient, api.Registry.InterfacesFor, o.DiscoveryInterval)
+	// NB: since we never actually look at the contents of
+	// the objects we fetch (beyond ObjectMeta), unstructured should be fine
+	dynamicMapper, err := dynamicmapper.NewRESTMapper(discoveryClient, apimeta.InterfacesForUnstructured, o.DiscoveryInterval)
 	if err != nil {
 		return fmt.Errorf("unable to construct dynamic discovery mapper: %v", err)
 	}
@@ -109,7 +111,7 @@ func (o SampleAdapterServerOptions) RunCustomMetricsAdapterServer(stopCh <-chan 
 
 	cmProvider := provider.NewFakeProvider(clientPool, dynamicMapper)
 
-	server, err := config.Complete().New(cmProvider)
+	server, err := config.Complete().New("sample-custom-metrics-adapter", cmProvider)
 	if err != nil {
 		return err
 	}
