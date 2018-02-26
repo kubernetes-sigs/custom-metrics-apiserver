@@ -60,7 +60,7 @@ func (i MetricInfo) Normalized(mapper apimeta.RESTMapper) (normalizedInfo Metric
 	return i, singularResource, nil
 }
 
-// CustomMetricsProvider is a soruce of custom metrics
+// CustomMetricsProvider is a source of custom metrics
 // which is able to supply a list of available metrics,
 // as well as metric values themselves on demand.
 //
