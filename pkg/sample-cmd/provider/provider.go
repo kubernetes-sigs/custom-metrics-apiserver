@@ -32,25 +32,26 @@ import (
 	"k8s.io/metrics/pkg/apis/custom_metrics"
 
 	"github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/provider"
+	"k8s.io/metrics/pkg/apis/external_metrics"
 )
 
-type incrementalTestingProvider struct {
+type testingProvider struct {
 	client dynamic.ClientPool
 	mapper apimeta.RESTMapper
 
-	values map[provider.MetricInfo]int64
+	values map[provider.CustomMetricInfo]int64
 }
 
-func NewFakeProvider(client dynamic.ClientPool, mapper apimeta.RESTMapper) provider.CustomMetricsProvider {
-	return &incrementalTestingProvider{
+func NewFakeProvider(client dynamic.ClientPool, mapper apimeta.RESTMapper) provider.MetricsProvider {
+	return &testingProvider{
 		client: client,
 		mapper: mapper,
-		values: make(map[provider.MetricInfo]int64),
+		values: make(map[provider.CustomMetricInfo]int64),
 	}
 }
 
-func (p *incrementalTestingProvider) valueFor(groupResource schema.GroupResource, metricName string, namespaced bool) (int64, error) {
-	info := provider.MetricInfo{
+func (p *testingProvider) valueFor(groupResource schema.GroupResource, metricName string, namespaced bool) (int64, error) {
+	info := provider.CustomMetricInfo{
 		GroupResource: groupResource,
 		Metric:        metricName,
 		Namespaced:    namespaced,
@@ -68,7 +69,7 @@ func (p *incrementalTestingProvider) valueFor(groupResource schema.GroupResource
 	return value, nil
 }
 
-func (p *incrementalTestingProvider) metricFor(value int64, groupResource schema.GroupResource, namespace string, name string, metricName string) (*custom_metrics.MetricValue, error) {
+func (p *testingProvider) metricFor(value int64, groupResource schema.GroupResource, namespace string, name string, metricName string) (*custom_metrics.MetricValue, error) {
 	kind, err := p.mapper.KindFor(groupResource.WithVersion(""))
 	if err != nil {
 		return nil, err
@@ -87,7 +88,7 @@ func (p *incrementalTestingProvider) metricFor(value int64, groupResource schema
 	}, nil
 }
 
-func (p *incrementalTestingProvider) metricsFor(totalValue int64, groupResource schema.GroupResource, metricName string, list runtime.Object) (*custom_metrics.MetricValueList, error) {
+func (p *testingProvider) metricsFor(totalValue int64, groupResource schema.GroupResource, metricName string, list runtime.Object) (*custom_metrics.MetricValueList, error) {
 	if !apimeta.IsListType(list) {
 		return nil, fmt.Errorf("returned object was not a list")
 	}
@@ -118,7 +119,7 @@ func (p *incrementalTestingProvider) metricsFor(totalValue int64, groupResource 
 	}, nil
 }
 
-func (p *incrementalTestingProvider) GetRootScopedMetricByName(groupResource schema.GroupResource, name string, metricName string) (*custom_metrics.MetricValue, error) {
+func (p *testingProvider) GetRootScopedMetricByName(groupResource schema.GroupResource, name string, metricName string) (*custom_metrics.MetricValue, error) {
 	value, err := p.valueFor(groupResource, metricName, false)
 	if err != nil {
 		return nil, err
@@ -126,7 +127,7 @@ func (p *incrementalTestingProvider) GetRootScopedMetricByName(groupResource sch
 	return p.metricFor(value, groupResource, "", name, metricName)
 }
 
-func (p *incrementalTestingProvider) GetRootScopedMetricBySelector(groupResource schema.GroupResource, selector labels.Selector, metricName string) (*custom_metrics.MetricValueList, error) {
+func (p *testingProvider) GetRootScopedMetricBySelector(groupResource schema.GroupResource, selector labels.Selector, metricName string) (*custom_metrics.MetricValueList, error) {
 	// construct a client to list the names of objects matching the label selector
 	client, err := p.client.ClientForGroupVersionResource(groupResource.WithVersion(""))
 	if err != nil {
@@ -154,7 +155,7 @@ func (p *incrementalTestingProvider) GetRootScopedMetricBySelector(groupResource
 	return p.metricsFor(totalValue, groupResource, metricName, matchingObjectsRaw)
 }
 
-func (p *incrementalTestingProvider) GetNamespacedMetricByName(groupResource schema.GroupResource, namespace string, name string, metricName string) (*custom_metrics.MetricValue, error) {
+func (p *testingProvider) GetNamespacedMetricByName(groupResource schema.GroupResource, namespace string, name string, metricName string) (*custom_metrics.MetricValue, error) {
 	value, err := p.valueFor(groupResource, metricName, true)
 	if err != nil {
 		return nil, err
@@ -162,7 +163,7 @@ func (p *incrementalTestingProvider) GetNamespacedMetricByName(groupResource sch
 	return p.metricFor(value, groupResource, namespace, name, metricName)
 }
 
-func (p *incrementalTestingProvider) GetNamespacedMetricBySelector(groupResource schema.GroupResource, namespace string, selector labels.Selector, metricName string) (*custom_metrics.MetricValueList, error) {
+func (p *testingProvider) GetNamespacedMetricBySelector(groupResource schema.GroupResource, namespace string, selector labels.Selector, metricName string) (*custom_metrics.MetricValueList, error) {
 	// construct a client to list the names of objects matching the label selector
 	client, err := p.client.ClientForGroupVersionResource(groupResource.WithVersion(""))
 	if err != nil {
@@ -190,9 +191,9 @@ func (p *incrementalTestingProvider) GetNamespacedMetricBySelector(groupResource
 	return p.metricsFor(totalValue, groupResource, metricName, matchingObjectsRaw)
 }
 
-func (p *incrementalTestingProvider) ListAllMetrics() []provider.MetricInfo {
+func (p *testingProvider) ListAllMetrics() []provider.CustomMetricInfo {
 	// TODO: maybe dynamically generate this?
-	return []provider.MetricInfo{
+	return []provider.CustomMetricInfo{
 		{
 			GroupResource: schema.GroupResource{Group: "", Resource: "pods"},
 			Metric:        "packets-per-second",
@@ -208,5 +209,22 @@ func (p *incrementalTestingProvider) ListAllMetrics() []provider.MetricInfo {
 			Metric:        "queue-length",
 			Namespaced:    false,
 		},
+	}
+}
+func (p *testingProvider) GetExternalMetric(namespace string, metricName string, metricSelector labels.Selector) (*external_metrics.ExternalMetricValueList, error) {
+	return &external_metrics.ExternalMetricValueList{
+		Items: []external_metrics.ExternalMetricValue{
+			{
+				MetricName: metricName,
+				MetricLabels: map[string]string{},
+				Timestamp:  metav1.Time{time.Now()},
+				Value:      *resource.NewMilliQuantity(42, resource.DecimalSI),
+			},
+		},
+	}, nil
+}
+
+func (p *testingProvider) ListAllExternalMetrics() []provider.ExternalMetricInfo {
+	return []provider.ExternalMetricInfo{
 	}
 }

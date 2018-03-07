@@ -27,7 +27,8 @@ import (
 	genericapiserver "k8s.io/apiserver/pkg/server"
 
 	"github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/provider"
-	"k8s.io/metrics/pkg/apis/custom_metrics/install"
+	cm_install "k8s.io/metrics/pkg/apis/custom_metrics/install"
+	em_install "k8s.io/metrics/pkg/apis/external_metrics/install"
 )
 
 var (
@@ -38,7 +39,8 @@ var (
 )
 
 func init() {
-	install.Install(groupFactoryRegistry, registry, Scheme)
+	cm_install.Install(groupFactoryRegistry, registry, Scheme)
+	em_install.Install(groupFactoryRegistry, registry, Scheme)
 
 	// we need to add the options to empty v1
 	// TODO fix the server code to avoid this
@@ -62,7 +64,7 @@ type Config struct {
 // CustomMetricsAdapterServer contains state for a Kubernetes cluster master/api server.
 type CustomMetricsAdapterServer struct {
 	GenericAPIServer *genericapiserver.GenericAPIServer
-	Provider         provider.CustomMetricsProvider
+	Provider         provider.MetricsProvider
 }
 
 type completedConfig struct {
@@ -80,7 +82,7 @@ func (c *Config) Complete() completedConfig {
 
 // New returns a new instance of CustomMetricsAdapterServer from the given config.
 // name is used to differentiate for logging.
-func (c completedConfig) New(name string, cmProvider provider.CustomMetricsProvider) (*CustomMetricsAdapterServer, error) {
+func (c completedConfig) New(name string, metricsProvider provider.MetricsProvider) (*CustomMetricsAdapterServer, error) {
 	genericServer, err := c.CompletedConfig.New(name, genericapiserver.EmptyDelegate) // completion is done in Complete, no need for a second time
 	if err != nil {
 		return nil, err
@@ -88,10 +90,13 @@ func (c completedConfig) New(name string, cmProvider provider.CustomMetricsProvi
 
 	s := &CustomMetricsAdapterServer{
 		GenericAPIServer: genericServer,
-		Provider:         cmProvider,
+		Provider:         metricsProvider,
 	}
 
 	if err := s.InstallCustomMetricsAPI(); err != nil {
+		return nil, err
+	}
+	if err := s.InstallExternalMetricsAPI(); err != nil {
 		return nil, err
 	}
 

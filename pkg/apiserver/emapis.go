@@ -1,5 +1,5 @@
 /*
-Copyright 2017 The Kubernetes Authors.
+Copyright 2018 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -26,14 +26,15 @@ import (
 	genericapiserver "k8s.io/apiserver/pkg/server"
 
 	specificapi "github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/apiserver/installer"
+	metricstorage "github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/registry/external_metrics"
+	"k8s.io/metrics/pkg/apis/external_metrics"
 	"github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/provider"
-	metricstorage "github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/registry/custom_metrics"
-	"k8s.io/metrics/pkg/apis/custom_metrics"
 )
 
-func (s *CustomMetricsAdapterServer) InstallCustomMetricsAPI() error {
+// InstallExternalMetricsAPI registers the api server in Kube Aggregator
+func (s *CustomMetricsAdapterServer) InstallExternalMetricsAPI() error {
 
-	groupMeta := registry.GroupOrDie(custom_metrics.GroupName)
+	groupMeta := registry.GroupOrDie(external_metrics.GroupName)
 
 	preferredVersionForDiscovery := metav1.GroupVersionForDiscovery{
 		GroupVersion: groupMeta.GroupVersion.String(),
@@ -49,9 +50,9 @@ func (s *CustomMetricsAdapterServer) InstallCustomMetricsAPI() error {
 		PreferredVersion: preferredVersionForDiscovery,
 	}
 
-	cmAPI := s.cmAPI(groupMeta, &groupMeta.GroupVersion)
+	emAPI := s.emAPI(groupMeta, &groupMeta.GroupVersion)
 
-	if err := cmAPI.InstallREST(s.GenericAPIServer.Handler.GoRestfulContainer); err != nil {
+	if err := emAPI.InstallREST(s.GenericAPIServer.Handler.GoRestfulContainer); err != nil {
 		return err
 	}
 
@@ -61,7 +62,7 @@ func (s *CustomMetricsAdapterServer) InstallCustomMetricsAPI() error {
 	return nil
 }
 
-func (s *CustomMetricsAdapterServer) cmAPI(groupMeta *apimachinery.GroupMeta, groupVersion *schema.GroupVersion) *specificapi.MetricsAPIGroupVersion {
+func (s *CustomMetricsAdapterServer) emAPI(groupMeta *apimachinery.GroupMeta, groupVersion *schema.GroupVersion) *specificapi.MetricsAPIGroupVersion {
 	resourceStorage := metricstorage.NewREST(s.Provider)
 
 	return &specificapi.MetricsAPIGroupVersion{
@@ -84,8 +85,7 @@ func (s *CustomMetricsAdapterServer) cmAPI(groupMeta *apimachinery.GroupMeta, gr
 			MinRequestTimeout:      s.GenericAPIServer.MinRequestTimeout(),
 			OptionsExternalVersion: &schema.GroupVersion{Version: "v1"},
 		},
-
-		ResourceLister: provider.NewCustomMetricResourceLister(s.Provider),
-		Handlers:       &specificapi.CMHandlers{},
+		ResourceLister: provider.NewExternalMetricResourceLister(s.Provider),
+		Handlers: &specificapi.EMHandlers{},
 	}
 }
