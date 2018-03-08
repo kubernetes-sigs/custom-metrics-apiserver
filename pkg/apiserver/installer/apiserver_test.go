@@ -38,11 +38,16 @@ import (
 	"k8s.io/apiserver/pkg/endpoints/request"
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	"k8s.io/metrics/pkg/apis/custom_metrics"
-	"k8s.io/metrics/pkg/apis/custom_metrics/install"
+	installcm "k8s.io/metrics/pkg/apis/custom_metrics/install"
 	cmv1beta1 "k8s.io/metrics/pkg/apis/custom_metrics/v1beta1"
+	installem "k8s.io/metrics/pkg/apis/external_metrics/install"
+	emv1beta1 "k8s.io/metrics/pkg/apis/external_metrics/v1beta1"
 
 	"github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/provider"
-	metricstorage "github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/registry/custom_metrics"
+	custommetricstorage "github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/registry/custom_metrics"
+	externalmetricstorage "github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/registry/external_metrics"
+	sampleprovider "github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/sample-cmd/provider"
+	"k8s.io/metrics/pkg/apis/external_metrics"
 )
 
 // defaultAPIServer exposes nested objects for testability.
@@ -52,20 +57,23 @@ type defaultAPIServer struct {
 }
 
 var (
-	groupFactoryRegistry = make(announced.APIGroupFactoryRegistry)
-	registry             = registered.NewOrDie("")
-	Scheme               = runtime.NewScheme()
-	Codecs               = serializer.NewCodecFactory(Scheme)
-	prefix               = genericapiserver.APIGroupPrefix
-	groupVersion         schema.GroupVersion
-	groupMeta            *apimachinery.GroupMeta
-	codec                = Codecs.LegacyCodec()
-	emptySet             = labels.Set{}
-	matchingSet          = labels.Set{"foo": "bar"}
+	groupFactoryRegistry        = make(announced.APIGroupFactoryRegistry)
+	registry                    = registered.NewOrDie("")
+	Scheme                      = runtime.NewScheme()
+	Codecs                      = serializer.NewCodecFactory(Scheme)
+	prefix                      = genericapiserver.APIGroupPrefix
+	customMetricsGroupVersion   schema.GroupVersion
+	customMetricsGroupMeta      *apimachinery.GroupMeta
+	externalMetricsGroupVersion schema.GroupVersion
+	externalMetricsGroupMeta    *apimachinery.GroupMeta
+	codec                       = Codecs.LegacyCodec()
+	emptySet                    = labels.Set{}
+	matchingSet                 = labels.Set{"foo": "bar"}
 )
 
 func init() {
-	install.Install(groupFactoryRegistry, registry, Scheme)
+	installcm.Install(groupFactoryRegistry, registry, Scheme)
+	installem.Install(groupFactoryRegistry, registry, Scheme)
 
 	// we need to add the options to empty v1
 	// TODO fix the server code to avoid this
@@ -81,8 +89,10 @@ func init() {
 		&metav1.APIResourceList{},
 	)
 
-	groupMeta = registry.GroupOrDie(custom_metrics.GroupName)
-	groupVersion = groupMeta.GroupVersion
+	customMetricsGroupMeta = registry.GroupOrDie(custom_metrics.GroupName)
+	customMetricsGroupVersion = customMetricsGroupMeta.GroupVersion
+	externalMetricsGroupMeta = registry.GroupOrDie(external_metrics.GroupName)
+	externalMetricsGroupVersion = externalMetricsGroupMeta.GroupVersion
 }
 
 func extractBody(response *http.Response, object runtime.Object) error {
@@ -103,17 +113,17 @@ func extractBodyString(response *http.Response) (string, error) {
 	return string(body), err
 }
 
-func handle(prov provider.CustomMetricsProvider) http.Handler {
+func handleCustomMetrics(prov provider.CustomMetricsProvider) http.Handler {
 	container := restful.NewContainer()
 	container.Router(restful.CurlyRouter{})
 	mux := container.ServeMux
-	resourceStorage := metricstorage.NewREST(prov)
+	resourceStorage := custommetricstorage.NewREST(prov)
 	reqContextMapper := request.NewRequestContextMapper()
 	group := &MetricsAPIGroupVersion{
 		DynamicStorage: resourceStorage,
 		APIGroupVersion: &genericapi.APIGroupVersion{
 			Root:         prefix,
-			GroupVersion: groupVersion,
+			GroupVersion: customMetricsGroupVersion,
 
 			ParameterCodec:  metav1.ParameterCodec,
 			Serializer:      Codecs,
@@ -122,13 +132,14 @@ func handle(prov provider.CustomMetricsProvider) http.Handler {
 			UnsafeConvertor: runtime.UnsafeObjectConvertor(Scheme),
 			Copier:          Scheme,
 			Typer:           Scheme,
-			Linker:          groupMeta.SelfLinker,
-			Mapper:          groupMeta.RESTMapper,
+			Linker:          customMetricsGroupMeta.SelfLinker,
+			Mapper:          customMetricsGroupMeta.RESTMapper,
 
 			Context:                reqContextMapper,
 			OptionsExternalVersion: &schema.GroupVersion{Version: "v1"},
 		},
-		ResourceLister: provider.NewResourceLister(prov),
+		ResourceLister: provider.NewCustomMetricResourceLister(prov),
+		Handlers:       &CMHandlers{},
 	}
 
 	if err := group.InstallREST(container); err != nil {
@@ -142,29 +153,69 @@ func handle(prov provider.CustomMetricsProvider) http.Handler {
 	return handler
 }
 
-type fakeProvider struct {
+func handleExternalMetrics(prov provider.ExternalMetricsProvider) http.Handler {
+	container := restful.NewContainer()
+	container.Router(restful.CurlyRouter{})
+	mux := container.ServeMux
+	resourceStorage := externalmetricstorage.NewREST(prov)
+	reqContextMapper := request.NewRequestContextMapper()
+	group := &MetricsAPIGroupVersion{
+		DynamicStorage: resourceStorage,
+		APIGroupVersion: &genericapi.APIGroupVersion{
+			Root:         prefix,
+			GroupVersion: externalMetricsGroupVersion,
+
+			ParameterCodec:  metav1.ParameterCodec,
+			Serializer:      Codecs,
+			Creater:         Scheme,
+			Convertor:       Scheme,
+			UnsafeConvertor: runtime.UnsafeObjectConvertor(Scheme),
+			Copier:          Scheme,
+			Typer:           Scheme,
+			Linker:          externalMetricsGroupMeta.SelfLinker,
+			Mapper:          externalMetricsGroupMeta.RESTMapper,
+
+			Context:                reqContextMapper,
+			OptionsExternalVersion: &schema.GroupVersion{Version: "v1"},
+		},
+		ResourceLister: provider.NewExternalMetricResourceLister(prov),
+		Handlers:       &EMHandlers{},
+	}
+
+	if err := group.InstallREST(container); err != nil {
+		panic(fmt.Sprintf("unable to install container %s: %v", group.GroupVersion, err))
+	}
+
+	var handler http.Handler = &defaultAPIServer{mux, container}
+	reqInfoResolver := genericapiserver.NewRequestInfoResolver(&genericapiserver.Config{})
+	handler = genericapifilters.WithRequestInfo(handler, reqInfoResolver, reqContextMapper)
+	handler = request.WithRequestContext(handler, reqContextMapper)
+	return handler
+}
+
+type fakeCMProvider struct {
 	rootValues             map[string][]custom_metrics.MetricValue
 	namespacedValues       map[string][]custom_metrics.MetricValue
 	rootSubsetCounts       map[string]int
 	namespacedSubsetCounts map[string]int
-	metrics                []provider.MetricInfo
+	metrics                []provider.CustomMetricInfo
 }
 
-func (p *fakeProvider) GetRootScopedMetricByName(groupResource schema.GroupResource, name string, metricName string) (*custom_metrics.MetricValue, error) {
+func (p *fakeCMProvider) GetRootScopedMetricByName(groupResource schema.GroupResource, name string, metricName string) (*custom_metrics.MetricValue, error) {
 	metricId := groupResource.String() + "/" + name + "/" + metricName
 	values, ok := p.rootValues[metricId]
 	if !ok {
-		return nil, fmt.Errorf("non-existant metric requested (id: %s)", metricId)
+		return nil, fmt.Errorf("non-existent metric requested (id: %s)", metricId)
 	}
 
 	return &values[0], nil
 }
 
-func (p *fakeProvider) GetRootScopedMetricBySelector(groupResource schema.GroupResource, selector labels.Selector, metricName string) (*custom_metrics.MetricValueList, error) {
+func (p *fakeCMProvider) GetRootScopedMetricBySelector(groupResource schema.GroupResource, selector labels.Selector, metricName string) (*custom_metrics.MetricValueList, error) {
 	metricId := groupResource.String() + "/*/" + metricName
 	values, ok := p.rootValues[metricId]
 	if !ok {
-		return nil, fmt.Errorf("non-existant metric requested (id: %s)", metricId)
+		return nil, fmt.Errorf("non-existent metric requested (id: %s)", metricId)
 	}
 
 	var trimmedValues custom_metrics.MetricValueList
@@ -193,21 +244,21 @@ func (p *fakeProvider) GetRootScopedMetricBySelector(groupResource schema.GroupR
 	return &trimmedValues, nil
 }
 
-func (p *fakeProvider) GetNamespacedMetricByName(groupResource schema.GroupResource, namespace string, name string, metricName string) (*custom_metrics.MetricValue, error) {
+func (p *fakeCMProvider) GetNamespacedMetricByName(groupResource schema.GroupResource, namespace string, name string, metricName string) (*custom_metrics.MetricValue, error) {
 	metricId := namespace + "/" + groupResource.String() + "/" + name + "/" + metricName
 	values, ok := p.namespacedValues[metricId]
 	if !ok {
-		return nil, fmt.Errorf("non-existant metric requested (id: %s)", metricId)
+		return nil, fmt.Errorf("non-existent metric requested (id: %s)", metricId)
 	}
 
 	return &values[0], nil
 }
 
-func (p *fakeProvider) GetNamespacedMetricBySelector(groupResource schema.GroupResource, namespace string, selector labels.Selector, metricName string) (*custom_metrics.MetricValueList, error) {
+func (p *fakeCMProvider) GetNamespacedMetricBySelector(groupResource schema.GroupResource, namespace string, selector labels.Selector, metricName string) (*custom_metrics.MetricValueList, error) {
 	metricId := namespace + "/" + groupResource.String() + "/*/" + metricName
 	values, ok := p.namespacedValues[metricId]
 	if !ok {
-		return nil, fmt.Errorf("non-existant metric requested (id: %s)", metricId)
+		return nil, fmt.Errorf("non-existent metric requested (id: %s)", metricId)
 	}
 
 	var trimmedValues custom_metrics.MetricValueList
@@ -236,8 +287,15 @@ func (p *fakeProvider) GetNamespacedMetricBySelector(groupResource schema.GroupR
 	return &trimmedValues, nil
 }
 
-func (p *fakeProvider) ListAllMetrics() []provider.MetricInfo {
+func (p *fakeCMProvider) ListAllMetrics() []provider.CustomMetricInfo {
 	return p.metrics
+}
+
+type T struct {
+	Method        string
+	Path          string
+	Status        int
+	ExpectedCount int
 }
 
 func TestCustomMetricsAPI(t *testing.T) {
@@ -246,35 +304,26 @@ func TestCustomMetricsAPI(t *testing.T) {
 	matchingNodesCount := 2
 	matchingPodsCount := 8
 
-	type T struct {
-		Method        string
-		Path          string
-		Status        int
-		ExpectedCount int
-	}
 	cases := map[string]T{
 		// checks which should fail
 		"GET long prefix": {"GET", "/" + prefix + "/", http.StatusNotFound, 0},
 
-		"root GET missing storage": {"GET", "/" + prefix + "/" + groupVersion.Group + "/" + groupVersion.Version + "/blah", http.StatusNotFound, 0},
+		"root GET missing storage": {"GET", "/" + prefix + "/" + customMetricsGroupVersion.Group + "/" + customMetricsGroupVersion.Version + "/blah", http.StatusNotFound, 0},
 
-		"namespaced GET long prefix":     {"GET", "/" + prefix + "/", http.StatusNotFound, 0},
-		"namespaced GET missing storage": {"GET", "/" + prefix + "/" + groupVersion.Group + "/" + groupVersion.Version + "/blah", http.StatusNotFound, 0},
-
-		"GET at root resource leaf":        {"GET", "/" + prefix + "/" + groupVersion.Group + "/" + groupVersion.Version + "/nodes/foo", http.StatusNotFound, 0},
-		"GET at namespaced resource leaft": {"GET", "/" + prefix + "/" + groupVersion.Group + "/" + groupVersion.Version + "/namespaces/ns/pods/bar", http.StatusNotFound, 0},
+		"GET at root resource leaf":        {"GET", "/" + prefix + "/" + customMetricsGroupVersion.Group + "/" + customMetricsGroupVersion.Version + "/nodes/foo", http.StatusNotFound, 0},
+		"GET at namespaced resource leaft": {"GET", "/" + prefix + "/" + customMetricsGroupVersion.Group + "/" + customMetricsGroupVersion.Version + "/namespaces/ns/pods/bar", http.StatusNotFound, 0},
 
 		// Positive checks to make sure everything is wired correctly
-		"GET for all nodes (root)":                 {"GET", "/" + prefix + "/" + groupVersion.Group + "/" + groupVersion.Version + "/nodes/*/some-metric", http.StatusOK, totalNodesCount},
-		"GET for all pods (namespaced)":            {"GET", "/" + prefix + "/" + groupVersion.Group + "/" + groupVersion.Version + "/namespaces/ns/pods/*/some-metric", http.StatusOK, totalPodsCount},
-		"GET for namespace":                        {"GET", "/" + prefix + "/" + groupVersion.Group + "/" + groupVersion.Version + "/namespaces/ns/metrics/some-metric", http.StatusOK, 1},
-		"GET for label selected nodes (root)":      {"GET", "/" + prefix + "/" + groupVersion.Group + "/" + groupVersion.Version + "/nodes/*/some-metric?labelSelector=foo%3Dbar", http.StatusOK, matchingNodesCount},
-		"GET for label selected pods (namespaced)": {"GET", "/" + prefix + "/" + groupVersion.Group + "/" + groupVersion.Version + "/namespaces/ns/pods/*/some-metric?labelSelector=foo%3Dbar", http.StatusOK, matchingPodsCount},
-		"GET for single node (root)":               {"GET", "/" + prefix + "/" + groupVersion.Group + "/" + groupVersion.Version + "/nodes/foo/some-metric", http.StatusOK, 1},
-		"GET for single pod (namespaced)":          {"GET", "/" + prefix + "/" + groupVersion.Group + "/" + groupVersion.Version + "/namespaces/ns/pods/foo/some-metric", http.StatusOK, 1},
+		"GET for all nodes (root)":                 {"GET", "/" + prefix + "/" + customMetricsGroupVersion.Group + "/" + customMetricsGroupVersion.Version + "/nodes/*/some-metric", http.StatusOK, totalNodesCount},
+		"GET for all pods (namespaced)":            {"GET", "/" + prefix + "/" + customMetricsGroupVersion.Group + "/" + customMetricsGroupVersion.Version + "/namespaces/ns/pods/*/some-metric", http.StatusOK, totalPodsCount},
+		"GET for namespace":                        {"GET", "/" + prefix + "/" + customMetricsGroupVersion.Group + "/" + customMetricsGroupVersion.Version + "/namespaces/ns/metrics/some-metric", http.StatusOK, 1},
+		"GET for label selected nodes (root)":      {"GET", "/" + prefix + "/" + customMetricsGroupVersion.Group + "/" + customMetricsGroupVersion.Version + "/nodes/*/some-metric?labelSelector=foo%3Dbar", http.StatusOK, matchingNodesCount},
+		"GET for label selected pods (namespaced)": {"GET", "/" + prefix + "/" + customMetricsGroupVersion.Group + "/" + customMetricsGroupVersion.Version + "/namespaces/ns/pods/*/some-metric?labelSelector=foo%3Dbar", http.StatusOK, matchingPodsCount},
+		"GET for single node (root)":               {"GET", "/" + prefix + "/" + customMetricsGroupVersion.Group + "/" + customMetricsGroupVersion.Version + "/nodes/foo/some-metric", http.StatusOK, 1},
+		"GET for single pod (namespaced)":          {"GET", "/" + prefix + "/" + customMetricsGroupVersion.Group + "/" + customMetricsGroupVersion.Version + "/namespaces/ns/pods/foo/some-metric", http.StatusOK, 1},
 	}
 
-	prov := &fakeProvider{
+	prov := &fakeCMProvider{
 		rootValues: map[string][]custom_metrics.MetricValue{
 			"nodes/*/some-metric":       make([]custom_metrics.MetricValue, totalNodesCount),
 			"nodes/foo/some-metric":     make([]custom_metrics.MetricValue, 1),
@@ -293,31 +342,15 @@ func TestCustomMetricsAPI(t *testing.T) {
 		},
 	}
 
-	server := httptest.NewServer(handle(prov))
+	server := httptest.NewServer(handleCustomMetrics(prov))
 	defer server.Close()
 	client := http.Client{}
 	for k, v := range cases {
-		request, err := http.NewRequest(v.Method, server.URL+v.Path, nil)
+		response, err := executeRequest(t, k, v, server, &client)
 		if err != nil {
-			t.Fatalf("unexpected error (%s): %v", k, err)
-		}
-
-		response, err := client.Do(request)
-		if err != nil {
-			t.Errorf("unexpected error (%s): %v", k, err)
+			t.Errorf(err.Error())
 			continue
 		}
-
-		if response.StatusCode != v.Status {
-			body, err := extractBodyString(response)
-			bodyPart := body
-			if err != nil {
-				bodyPart = fmt.Sprintf("[error extracting body: %v]", err)
-			}
-			t.Errorf("Expected %d for %s (%s), Got %#v -- %s", v.Status, v.Method, k, response, bodyPart)
-			continue
-		}
-
 		if v.ExpectedCount > 0 {
 			lst := &cmv1beta1.MetricValueList{}
 			if err := extractBody(response, lst); err != nil {
@@ -330,4 +363,68 @@ func TestCustomMetricsAPI(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestExternalMetricsAPI(t *testing.T) {
+	cases := map[string]T{
+		// checks which should fail
+
+		"GET long prefix":             {"GET", "/" + prefix + "/", http.StatusNotFound, 0},
+		"GET at root scope":           {"GET", "/" + prefix + "/" + externalMetricsGroupVersion.Group + "/" + externalMetricsGroupVersion.Version + "/nonexistent-metric", http.StatusNotFound, 0},
+		"GET without metric name":     {"GET", "/" + prefix + "/" + externalMetricsGroupVersion.Group + "/" + externalMetricsGroupVersion.Version + "/namespaces/foo", http.StatusNotFound, 0},
+		"GET for metric with slashes": {"GET", "/" + prefix + "/" + externalMetricsGroupVersion.Group + "/" + externalMetricsGroupVersion.Version + "/namespaces/foo/group/metric", http.StatusNotFound, 0},
+
+		// Positive checks to make sure everything is wired correctly
+		"GET for external metric":               {"GET", "/" + prefix + "/" + externalMetricsGroupVersion.Group + "/" + externalMetricsGroupVersion.Version + "/namespaces/default/my-external-metric", http.StatusOK, 2},
+		"GET for external metric with selector": {"GET", "/" + prefix + "/" + externalMetricsGroupVersion.Group + "/" + externalMetricsGroupVersion.Version + "/namespaces/default/my-external-metric?labelSelector=foo%3Dbar", http.StatusOK, 1},
+		"GET for nonexistent metric":            {"GET", "/" + prefix + "/" + externalMetricsGroupVersion.Group + "/" + externalMetricsGroupVersion.Version + "/namespaces/foo/nonexistent-metric", http.StatusOK, 0},
+	}
+
+	// "real" fake provider implementation can be used in test, because it doesn't have any dependencies.
+	// Note: this provider has a hardcoded list of external metrics.
+	prov := sampleprovider.NewFakeProvider(nil, nil)
+
+	server := httptest.NewServer(handleExternalMetrics(prov))
+	defer server.Close()
+	client := http.Client{}
+	for k, v := range cases {
+		response, err := executeRequest(t, k, v, server, &client)
+		if err != nil {
+			t.Errorf(err.Error())
+			continue
+		}
+		if v.ExpectedCount > 0 {
+			lst := &emv1beta1.ExternalMetricValueList{}
+			if err := extractBody(response, lst); err != nil {
+				t.Errorf("unexpected error (%s): %v", k, err)
+				continue
+			}
+			if len(lst.Items) != v.ExpectedCount {
+				t.Errorf("Expected %d items, got %d (%s): %#v", v.ExpectedCount, len(lst.Items), k, lst.Items)
+				continue
+			}
+		}
+	}
+}
+
+func executeRequest(t *testing.T, k string, v T, server *httptest.Server, client *http.Client) (*http.Response, error) {
+	request, err := http.NewRequest(v.Method, server.URL+v.Path, nil)
+	if err != nil {
+		t.Fatalf("unexpected error (%s): %v", k, err)
+	}
+
+	response, err := client.Do(request)
+	if err != nil {
+		return nil, fmt.Errorf("unexpected error (%s): %v", k, err)
+	}
+
+	if response.StatusCode != v.Status {
+		body, err := extractBodyString(response)
+		bodyPart := body
+		if err != nil {
+			bodyPart = fmt.Sprintf("[error extracting body: %v]", err)
+		}
+		return nil, fmt.Errorf("Expected %d for %s (%s), Got %#v -- %s", v.Status, v.Method, k, response, bodyPart)
+	}
+	return response, nil
 }

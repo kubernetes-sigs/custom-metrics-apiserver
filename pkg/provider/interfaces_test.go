@@ -36,7 +36,7 @@ func restMapper() apimeta.RESTMapper {
 }
 
 func TestNormalizeMetricInfoProducesSingularForm(t *testing.T) {
-	pluralInfo := MetricInfo{
+	pluralInfo := CustomMetricInfo{
 		GroupResource: schema.GroupResource{Resource: "pods"},
 		Namespaced:    true,
 		Metric:        "cpu_usage",
@@ -48,13 +48,13 @@ func TestNormalizeMetricInfoProducesSingularForm(t *testing.T) {
 }
 
 func TestNormalizeMetricInfoDealsWithPluralization(t *testing.T) {
-	singularInfo := MetricInfo{
+	singularInfo := CustomMetricInfo{
 		GroupResource: schema.GroupResource{Resource: "pod"},
 		Namespaced:    true,
 		Metric:        "cpu_usage",
 	}
 
-	pluralInfo := MetricInfo{
+	pluralInfo := CustomMetricInfo{
 		GroupResource: schema.GroupResource{Resource: "pods"},
 		Namespaced:    true,
 		Metric:        "cpu_usage",
