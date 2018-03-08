@@ -82,7 +82,7 @@ func (c *Config) Complete() completedConfig {
 
 // New returns a new instance of CustomMetricsAdapterServer from the given config.
 // name is used to differentiate for logging.
-func (c completedConfig) New(name string, metricsProvider provider.MetricsProvider) (*CustomMetricsAdapterServer, error) {
+func (c completedConfig) New(name string, metricsProvider provider.MetricsProvider, enableCustomMetricsAPI bool, enableExternalMetricsAPI bool) (*CustomMetricsAdapterServer, error) {
 	genericServer, err := c.CompletedConfig.New(name, genericapiserver.EmptyDelegate) // completion is done in Complete, no need for a second time
 	if err != nil {
 		return nil, err
@@ -93,11 +93,15 @@ func (c completedConfig) New(name string, metricsProvider provider.MetricsProvid
 		Provider:         metricsProvider,
 	}
 
-	if err := s.InstallCustomMetricsAPI(); err != nil {
-		return nil, err
+	if enableCustomMetricsAPI {
+		if err := s.InstallCustomMetricsAPI(); err != nil {
+			return nil, err
+		}
 	}
-	if err := s.InstallExternalMetricsAPI(); err != nil {
-		return nil, err
+	if enableExternalMetricsAPI {
+		if err := s.InstallExternalMetricsAPI(); err != nil {
+			return nil, err
+		}
 	}
 
 	return s, nil
