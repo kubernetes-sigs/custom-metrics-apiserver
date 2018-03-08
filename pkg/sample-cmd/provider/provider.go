@@ -35,11 +35,63 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 )
 
+type externalMetric struct {
+	info provider.ExternalMetricInfo
+	value external_metrics.ExternalMetricValue
+}
+
+var (
+	testingMetrics = []externalMetric{
+		{
+			info: provider.ExternalMetricInfo{
+				Metric: "my-external-metric",
+				Labels: map[string]string{
+					"foo": "bar",
+				},
+			},
+			value: external_metrics.ExternalMetricValue{
+				MetricName: "my-external-metric",
+				MetricLabels: map[string]string{
+					"foo": "bar",
+				},
+				Value: *resource.NewQuantity(42, resource.DecimalSI),
+			},
+		},
+		{
+			info: provider.ExternalMetricInfo{
+				Metric: "my-external-metric",
+				Labels: map[string]string{
+					"foo": "baz",
+				},
+			},
+			value: external_metrics.ExternalMetricValue{
+				MetricName: "my-external-metric",
+				MetricLabels: map[string]string{
+					"foo": "baz",
+				},
+				Value: *resource.NewQuantity(43, resource.DecimalSI),
+			},
+		},
+		{
+			info: provider.ExternalMetricInfo{
+				Metric: "other-external-metric",
+				Labels: map[string]string{},
+			},
+			value: external_metrics.ExternalMetricValue{
+				MetricName: "other-external-metric",
+				MetricLabels: map[string]string{},
+				Value: *resource.NewQuantity(44, resource.DecimalSI),
+			},
+		},
+	}
+)
+
 type testingProvider struct {
 	client dynamic.ClientPool
 	mapper apimeta.RESTMapper
 
 	values map[provider.CustomMetricInfo]int64
+	externalMetrics []externalMetric
 }
 
 func NewFakeProvider(client dynamic.ClientPool, mapper apimeta.RESTMapper) provider.MetricsProvider {
@@ -47,6 +99,7 @@ func NewFakeProvider(client dynamic.ClientPool, mapper apimeta.RESTMapper) provi
 		client: client,
 		mapper: mapper,
 		values: make(map[provider.CustomMetricInfo]int64),
+		externalMetrics: testingMetrics,
 	}
 }
 
@@ -212,19 +265,24 @@ func (p *testingProvider) ListAllMetrics() []provider.CustomMetricInfo {
 	}
 }
 func (p *testingProvider) GetExternalMetric(namespace string, metricName string, metricSelector labels.Selector) (*external_metrics.ExternalMetricValueList, error) {
+	matchingMetrics := []external_metrics.ExternalMetricValue{}
+	for _, metric := range p.externalMetrics {
+		if metric.info.Metric == metricName &&
+			metricSelector.Matches(labels.Set(metric.info.Labels)) {
+			metricValue := metric.value
+			metricValue.Timestamp = metav1.Now()
+			matchingMetrics = append(matchingMetrics, metricValue)
+		}
+	}
 	return &external_metrics.ExternalMetricValueList{
-		Items: []external_metrics.ExternalMetricValue{
-			{
-				MetricName: metricName,
-				MetricLabels: map[string]string{},
-				Timestamp:  metav1.Time{time.Now()},
-				Value:      *resource.NewMilliQuantity(42, resource.DecimalSI),
-			},
-		},
+		Items: matchingMetrics,
 	}, nil
 }
 
 func (p *testingProvider) ListAllExternalMetrics() []provider.ExternalMetricInfo {
-	return []provider.ExternalMetricInfo{
+	externalMetricsInfo := []provider.ExternalMetricInfo{}
+	for _, metric := range p.externalMetrics {
+		externalMetricsInfo = append(externalMetricsInfo, metric.info)
 	}
+	return externalMetricsInfo
 }
