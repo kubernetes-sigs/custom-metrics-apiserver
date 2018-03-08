@@ -30,8 +30,7 @@ import (
 	"github.com/emicklei/go-restful"
 )
 
-type CMHandlers struct {
-}
+type CMHandlers struct{}
 
 // registerResourceHandlers registers the resource handlers for custom metrics.
 // Compared to the normal installer, this plays fast and loose a bit, but should still

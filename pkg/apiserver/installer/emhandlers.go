@@ -30,8 +30,7 @@ import (
 	"github.com/emicklei/go-restful"
 )
 
-type EMHandlers struct {
-}
+type EMHandlers struct{}
 
 // registerResourceHandlers registers the resource handlers for external metrics.
 // The implementation is based on corresponding registerResourceHandlers for Custom Metrics API
@@ -129,7 +128,7 @@ func (ch *EMHandlers) registerResourceHandlers(a *MetricsAPIInstaller, ws *restf
 	externalMetricRoute := ws.GET(externalMetricPath).To(externalMetricHandler).
 		Doc(doc).
 		Param(ws.QueryParameter("pretty", "If 'true', then the output is pretty printed.")).
-		Operation("list" + kind).
+		Operation("list"+kind).
 		Produces(allMediaTypes...).
 		Returns(http.StatusOK, "OK", versionedList).
 		Writes(versionedList)

@@ -103,7 +103,7 @@ type MetricsAPIInstaller struct {
 	group             *MetricsAPIGroupVersion
 	prefix            string // Path prefix where API resources are to be registered.
 	minRequestTimeout time.Duration
-	handlers Handlers
+	handlers          Handlers
 
 	// TODO: do we want to embed a normal API installer here so we can serve normal
 	// endpoints side by side with dynamic ones (from the same API group)?

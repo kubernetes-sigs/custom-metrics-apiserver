@@ -36,7 +36,7 @@ import (
 )
 
 type externalMetric struct {
-	info provider.ExternalMetricInfo
+	info  provider.ExternalMetricInfo
 	value external_metrics.ExternalMetricValue
 }
 
@@ -78,9 +78,9 @@ var (
 				Labels: map[string]string{},
 			},
 			value: external_metrics.ExternalMetricValue{
-				MetricName: "other-external-metric",
+				MetricName:   "other-external-metric",
 				MetricLabels: map[string]string{},
-				Value: *resource.NewQuantity(44, resource.DecimalSI),
+				Value:        *resource.NewQuantity(44, resource.DecimalSI),
 			},
 		},
 	}
@@ -90,15 +90,15 @@ type testingProvider struct {
 	client dynamic.ClientPool
 	mapper apimeta.RESTMapper
 
-	values map[provider.CustomMetricInfo]int64
+	values          map[provider.CustomMetricInfo]int64
 	externalMetrics []externalMetric
 }
 
 func NewFakeProvider(client dynamic.ClientPool, mapper apimeta.RESTMapper) provider.MetricsProvider {
 	return &testingProvider{
-		client: client,
-		mapper: mapper,
-		values: make(map[provider.CustomMetricInfo]int64),
+		client:          client,
+		mapper:          mapper,
+		values:          make(map[provider.CustomMetricInfo]int64),
 		externalMetrics: testingMetrics,
 	}
 }

@@ -26,9 +26,9 @@ import (
 	genericapiserver "k8s.io/apiserver/pkg/server"
 
 	specificapi "github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/apiserver/installer"
+	"github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/provider"
 	metricstorage "github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/registry/external_metrics"
 	"k8s.io/metrics/pkg/apis/external_metrics"
-	"github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/provider"
 )
 
 // InstallExternalMetricsAPI registers the api server in Kube Aggregator
@@ -86,6 +86,6 @@ func (s *CustomMetricsAdapterServer) emAPI(groupMeta *apimachinery.GroupMeta, gr
 			OptionsExternalVersion: &schema.GroupVersion{Version: "v1"},
 		},
 		ResourceLister: provider.NewExternalMetricResourceLister(s.Provider),
-		Handlers: &specificapi.EMHandlers{},
+		Handlers:       &specificapi.EMHandlers{},
 	}
 }
