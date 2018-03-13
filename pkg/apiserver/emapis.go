@@ -63,7 +63,7 @@ func (s *CustomMetricsAdapterServer) InstallExternalMetricsAPI() error {
 }
 
 func (s *CustomMetricsAdapterServer) emAPI(groupMeta *apimachinery.GroupMeta, groupVersion *schema.GroupVersion) *specificapi.MetricsAPIGroupVersion {
-	resourceStorage := metricstorage.NewREST(s.Provider)
+	resourceStorage := metricstorage.NewREST(s.externalMetricsProvider)
 
 	return &specificapi.MetricsAPIGroupVersion{
 		DynamicStorage: resourceStorage,
@@ -85,7 +85,7 @@ func (s *CustomMetricsAdapterServer) emAPI(groupMeta *apimachinery.GroupMeta, gr
 			MinRequestTimeout:      s.GenericAPIServer.MinRequestTimeout(),
 			OptionsExternalVersion: &schema.GroupVersion{Version: "v1"},
 		},
-		ResourceLister: provider.NewExternalMetricResourceLister(s.Provider),
+		ResourceLister: provider.NewExternalMetricResourceLister(s.externalMetricsProvider),
 		Handlers:       &specificapi.EMHandlers{},
 	}
 }

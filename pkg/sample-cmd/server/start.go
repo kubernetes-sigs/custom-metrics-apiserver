@@ -116,8 +116,17 @@ func (o SampleAdapterServerOptions) RunCustomMetricsAdapterServer(stopCh <-chan 
 	}
 
 	metricsProvider := provider.NewFakeProvider(clientPool, dynamicMapper)
+	customMetricsProvider := metricsProvider
+	externalMetricsProvider := metricsProvider
+	if !o.EnableCustomMetricsAPI {
+		customMetricsProvider = nil
+	}
+	if !o.EnableExternalMetricsAPI {
+		externalMetricsProvider = nil
+	}
 
-	server, err := config.Complete().New("sample-custom-metrics-adapter", metricsProvider, o.EnableCustomMetricsAPI, o.EnableExternalMetricsAPI)
+	// In this example, the same provider implements both Custom Metrics API and External Metrics API
+	server, err := config.Complete().New("sample-custom-metrics-adapter", customMetricsProvider, externalMetricsProvider)
 	if err != nil {
 		return err
 	}

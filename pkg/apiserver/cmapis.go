@@ -62,7 +62,7 @@ func (s *CustomMetricsAdapterServer) InstallCustomMetricsAPI() error {
 }
 
 func (s *CustomMetricsAdapterServer) cmAPI(groupMeta *apimachinery.GroupMeta, groupVersion *schema.GroupVersion) *specificapi.MetricsAPIGroupVersion {
-	resourceStorage := metricstorage.NewREST(s.Provider)
+	resourceStorage := metricstorage.NewREST(s.customMetricsProvider)
 
 	return &specificapi.MetricsAPIGroupVersion{
 		DynamicStorage: resourceStorage,
@@ -85,7 +85,7 @@ func (s *CustomMetricsAdapterServer) cmAPI(groupMeta *apimachinery.GroupMeta, gr
 			OptionsExternalVersion: &schema.GroupVersion{Version: "v1"},
 		},
 
-		ResourceLister: provider.NewCustomMetricResourceLister(s.Provider),
+		ResourceLister: provider.NewCustomMetricResourceLister(s.customMetricsProvider),
 		Handlers:       &specificapi.CMHandlers{},
 	}
 }
