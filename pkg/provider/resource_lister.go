@@ -25,7 +25,12 @@ type customMetricsResourceLister struct {
 	provider CustomMetricsProvider
 }
 
-func NewResourceLister(provider CustomMetricsProvider) discovery.APIResourceLister {
+type externalMetricsResourceLister struct {
+	provider ExternalMetricsProvider
+}
+
+// NewCustomMetricResourceLister creates APIResourceLister for provided CustomMetricsProvider.
+func NewCustomMetricResourceLister(provider CustomMetricsProvider) discovery.APIResourceLister {
 	return &customMetricsResourceLister{
 		provider: provider,
 	}
@@ -41,6 +46,30 @@ func (l *customMetricsResourceLister) ListAPIResources() []metav1.APIResource {
 			Namespaced: metric.Namespaced,
 			Kind:       "MetricValueList",
 			Verbs:      metav1.Verbs{"get"}, // TODO: support "watch"
+		}
+	}
+
+	return resources
+}
+
+// NewExternalMetricResourceLister creates APIResourceLister for provided CustomMetricsProvider.
+func NewExternalMetricResourceLister(provider ExternalMetricsProvider) discovery.APIResourceLister {
+	return &externalMetricsResourceLister{
+		provider: provider,
+	}
+}
+
+// ListAPIResources lists all supported custom metrics.
+func (l *externalMetricsResourceLister) ListAPIResources() []metav1.APIResource {
+	metrics := l.provider.ListAllExternalMetrics()
+	resources := make([]metav1.APIResource, len(metrics))
+
+	for i, metric := range metrics {
+		resources[i] = metav1.APIResource{
+			Name:       metric.Metric,
+			Namespaced: true,
+			Kind:       "ExternalMetricValueList",
+			Verbs:      metav1.Verbs{"get"},
 		}
 	}
 

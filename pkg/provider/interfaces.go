@@ -23,17 +23,24 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/metrics/pkg/apis/custom_metrics"
+	"k8s.io/metrics/pkg/apis/external_metrics"
 )
 
-// MetricInfo describes a metric for a particular
+// CustomMetricInfo describes a metric for a particular
 // fully-qualified group resource.
-type MetricInfo struct {
+type CustomMetricInfo struct {
 	GroupResource schema.GroupResource
 	Namespaced    bool
 	Metric        string
 }
 
-func (i MetricInfo) String() string {
+// ExternalMetricInfo describes a metric.
+type ExternalMetricInfo struct {
+	Metric string
+	Labels map[string]string
+}
+
+func (i CustomMetricInfo) String() string {
 	if i.Namespaced {
 		return fmt.Sprintf("%s/%s(namespaced)", i.GroupResource.String(), i.Metric)
 	} else {
@@ -45,7 +52,7 @@ func (i MetricInfo) String() string {
 // provided REST mapper, to ensure consistent pluralization, etc, for use when looking up or comparing
 // the MetricInfo.  It also returns the singular form of the GroupResource associated with the given
 // MetricInfo.
-func (i MetricInfo) Normalized(mapper apimeta.RESTMapper) (normalizedInfo MetricInfo, singluarResource string, err error) {
+func (i CustomMetricInfo) Normalized(mapper apimeta.RESTMapper) (normalizedInfo CustomMetricInfo, singluarResource string, err error) {
 	normalizedGroupRes, err := mapper.ResourceFor(i.GroupResource.WithVersion(""))
 	if err != nil {
 		return i, "", err
@@ -60,7 +67,7 @@ func (i MetricInfo) Normalized(mapper apimeta.RESTMapper) (normalizedInfo Metric
 	return i, singularResource, nil
 }
 
-// CustomMetricsProvider is a soruce of custom metrics
+// CustomMetricsProvider is a source of custom metrics
 // which is able to supply a list of available metrics,
 // as well as metric values themselves on demand.
 //
@@ -93,5 +100,20 @@ type CustomMetricsProvider interface {
 	// the current time.  Note that this is not allowed to return
 	// an error, so it is reccomended that implementors cache and
 	// periodically update this list, instead of querying every time.
-	ListAllMetrics() []MetricInfo
+	ListAllMetrics() []CustomMetricInfo
+}
+
+// ExternalMetricsProvider is a source of external metrics.
+// Metric is normally idendified by a name and a set of labels/tags. It is up to a specific
+// implementation how to translate metricSelector to a filter for metric values.
+// Namespace can be used by the implemetation for metric identification, access control or ignored.
+type ExternalMetricsProvider interface {
+	GetExternalMetric(namespace string, metricName string, metricSelector labels.Selector) (*external_metrics.ExternalMetricValueList, error)
+
+	ListAllExternalMetrics() []ExternalMetricInfo
+}
+
+type MetricsProvider interface {
+	CustomMetricsProvider
+	ExternalMetricsProvider
 }

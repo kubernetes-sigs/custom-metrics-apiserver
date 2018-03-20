@@ -39,6 +39,8 @@ func NewCommandStartSampleAdapterServer(out, errOut io.Writer, stopCh <-chan str
 	o := SampleAdapterServerOptions{
 		CustomMetricsAdapterServerOptions: baseOpts,
 		DiscoveryInterval:                 10 * time.Minute,
+		EnableCustomMetricsAPI:            true,
+		EnableExternalMetricsAPI:          true,
 	}
 
 	cmd := &cobra.Command{
@@ -69,6 +71,10 @@ func NewCommandStartSampleAdapterServer(out, errOut io.Writer, stopCh <-chan str
 		"any described objects")
 	flags.DurationVar(&o.DiscoveryInterval, "discovery-interval", o.DiscoveryInterval, ""+
 		"interval at which to refresh API discovery information")
+	flags.BoolVar(&o.EnableCustomMetricsAPI, "enable-custom-metrics-api", o.EnableCustomMetricsAPI, ""+
+		"whether to enable Custom Metrics API")
+	flags.BoolVar(&o.EnableExternalMetricsAPI, "enable-external-metrics-api", o.EnableExternalMetricsAPI, ""+
+		"whether to enable External Metrics API")
 
 	return cmd
 }
@@ -109,9 +115,18 @@ func (o SampleAdapterServerOptions) RunCustomMetricsAdapterServer(stopCh <-chan 
 		return fmt.Errorf("unable to construct lister client to initialize provider: %v", err)
 	}
 
-	cmProvider := provider.NewFakeProvider(clientPool, dynamicMapper)
+	metricsProvider := provider.NewFakeProvider(clientPool, dynamicMapper)
+	customMetricsProvider := metricsProvider
+	externalMetricsProvider := metricsProvider
+	if !o.EnableCustomMetricsAPI {
+		customMetricsProvider = nil
+	}
+	if !o.EnableExternalMetricsAPI {
+		externalMetricsProvider = nil
+	}
 
-	server, err := config.Complete().New("sample-custom-metrics-adapter", cmProvider)
+	// In this example, the same provider implements both Custom Metrics API and External Metrics API
+	server, err := config.Complete().New("sample-custom-metrics-adapter", customMetricsProvider, externalMetricsProvider)
 	if err != nil {
 		return err
 	}
@@ -125,4 +140,8 @@ type SampleAdapterServerOptions struct {
 	RemoteKubeConfigFile string
 	// DiscoveryInterval is the interval at which discovery information is refreshed
 	DiscoveryInterval time.Duration
+	// EnableCustomMetricsAPI switches on sample apiserver for Custom Metrics API
+	EnableCustomMetricsAPI bool
+	// EnableExternalMetricsAPI switches on sample apiserver for External Metrics API
+	EnableExternalMetricsAPI bool
 }
