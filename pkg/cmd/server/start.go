@@ -66,14 +66,14 @@ func (o CustomMetricsAdapterServerOptions) Config() (*apiserver.Config, error) {
 	}
 
 	serverConfig := genericapiserver.NewConfig(apiserver.Codecs)
-	if err := o.SecureServing.ApplyTo(serverConfig); err != nil {
+	if err := o.SecureServing.ApplyTo(&serverConfig.SecureServing); err != nil {
 		return nil, err
 	}
 
-	if err := o.Authentication.ApplyTo(serverConfig); err != nil {
+	if err := o.Authentication.ApplyTo(&serverConfig.Authentication, serverConfig.SecureServing, nil); err != nil {
 		return nil, err
 	}
-	if err := o.Authorization.ApplyTo(serverConfig); err != nil {
+	if err := o.Authorization.ApplyTo(&serverConfig.Authorization); err != nil {
 		return nil, err
 	}
 

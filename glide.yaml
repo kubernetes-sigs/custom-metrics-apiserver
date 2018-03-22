@@ -1,10 +1,20 @@
 package: github.com/kubernetes-incubator/custom-metrics-apiserver
 import:
 - package: github.com/emicklei/go-restful
+  version: 2.2.1  # close to kubernetes Godeps.json
+
 - package: github.com/emicklei/go-restful-swagger12
+  version: 1.0.1  # from kubernetes Godeps.json
+
 - package: github.com/go-openapi/spec
+  version: 1de3e0542de65ad8d75452a595886fdd0befb363  # from kubernetes Godeps.json
+
 - package: github.com/golang/glog
+  version: 44145f04b68cf362d9c4df2182967c2275eaefed  # from kubernetes Godep.json
+
 - package: github.com/spf13/cobra
+  version: c439c4fa093711d42e1b01acb1235b52004753c1  # from kubernetes Godeps.json
+
 - package: k8s.io/apimachinery
   subpackages:
   - pkg/api/errors
@@ -23,6 +33,8 @@ import:
   - pkg/util/errors
   - pkg/util/wait
   - pkg/version
+  tag: kubernetes-1.10.0-rc.1
+
 - package: k8s.io/apiserver
   subpackages:
   - pkg/endpoints
@@ -35,6 +47,8 @@ import:
   - pkg/server
   - pkg/server/options
   - pkg/util/logs
+  tag: kubernetes-1.10.0-rc.1
+
 - package: k8s.io/client-go
   subpackages:
   - discovery
@@ -46,12 +60,16 @@ import:
   - rest
   - testing
   - tools/clientcmd
+  tag: kubernetes-1.10.0-rc.1
+
 - package: k8s.io/metrics
   subpackages:
   - pkg/apis/custom_metrics
   - pkg/apis/custom_metrics/install
   - pkg/apis/external_metrics
   - pkg/apis/external_metrics/install
+  tag: kubernetes-1.10.0-rc.1
+
 testImport:
 - package: github.com/stretchr/testify
   version: ^1.1.4
