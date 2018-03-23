@@ -98,9 +98,10 @@ func (ch *EMHandlers) registerResourceHandlers(a *MetricsAPIInstaller, ws *restf
 		ParameterCodec:  a.group.ParameterCodec,
 		Creater:         a.group.Creater,
 		Convertor:       a.group.Convertor,
-		Copier:          a.group.Copier,
 		Typer:           a.group.Typer,
 		UnsafeConvertor: a.group.UnsafeConvertor,
+
+		// TODO: support TableConvertor?
 
 		// TODO: This seems wrong for cross-group subresources. It makes an assumption that a subresource and its parent are in the same group version. Revisit this.
 		Resource:    a.group.GroupVersion.WithResource("*"),

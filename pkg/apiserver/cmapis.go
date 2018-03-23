@@ -75,13 +75,11 @@ func (s *CustomMetricsAdapterServer) cmAPI(groupMeta *apimachinery.GroupMeta, gr
 			Creater:         Scheme,
 			Convertor:       Scheme,
 			UnsafeConvertor: runtime.UnsafeObjectConvertor(Scheme),
-			Copier:          Scheme,
 			Typer:           Scheme,
 			Linker:          groupMeta.SelfLinker,
 			Mapper:          groupMeta.RESTMapper,
 
 			Context:                s.GenericAPIServer.RequestContextMapper(),
-			MinRequestTimeout:      s.GenericAPIServer.MinRequestTimeout(),
 			OptionsExternalVersion: &schema.GroupVersion{Version: "v1"},
 		},
 
