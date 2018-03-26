@@ -28,7 +28,7 @@ import (
 
 type CustomMetricsAdapterServerOptions struct {
 	// genericoptions.ReccomendedOptions - EtcdOptions
-	SecureServing  *genericoptions.SecureServingOptions
+	SecureServing  *genericoptions.SecureServingOptionsWithLoopback
 	Authentication *genericoptions.DelegatingAuthenticationOptions
 	Authorization  *genericoptions.DelegatingAuthorizationOptions
 	Features       *genericoptions.FeatureOptions
@@ -39,7 +39,7 @@ type CustomMetricsAdapterServerOptions struct {
 
 func NewCustomMetricsAdapterServerOptions(out, errOut io.Writer) *CustomMetricsAdapterServerOptions {
 	o := &CustomMetricsAdapterServerOptions{
-		SecureServing:  genericoptions.NewSecureServingOptions(),
+		SecureServing:  genericoptions.WithLoopback(genericoptions.NewSecureServingOptions()),
 		Authentication: genericoptions.NewDelegatingAuthenticationOptions(),
 		Authorization:  genericoptions.NewDelegatingAuthorizationOptions(),
 		Features:       genericoptions.NewFeatureOptions(),
@@ -66,7 +66,7 @@ func (o CustomMetricsAdapterServerOptions) Config() (*apiserver.Config, error) {
 	}
 
 	serverConfig := genericapiserver.NewConfig(apiserver.Codecs)
-	if err := o.SecureServing.ApplyTo(&serverConfig.SecureServing); err != nil {
+	if err := o.SecureServing.ApplyTo(serverConfig); err != nil {
 		return nil, err
 	}
 
