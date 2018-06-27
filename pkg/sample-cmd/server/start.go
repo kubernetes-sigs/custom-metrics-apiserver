@@ -22,7 +22,6 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/rest"
@@ -105,17 +104,17 @@ func (o SampleAdapterServerOptions) RunCustomMetricsAdapterServer(stopCh <-chan 
 
 	// NB: since we never actually look at the contents of
 	// the objects we fetch (beyond ObjectMeta), unstructured should be fine
-	dynamicMapper, err := dynamicmapper.NewRESTMapper(discoveryClient, apimeta.InterfacesForUnstructured, o.DiscoveryInterval)
+	dynamicMapper, err := dynamicmapper.NewRESTMapper(discoveryClient, o.DiscoveryInterval)
 	if err != nil {
 		return fmt.Errorf("unable to construct dynamic discovery mapper: %v", err)
 	}
 
-	clientPool := dynamic.NewClientPool(clientConfig, dynamicMapper, dynamic.LegacyAPIPathResolverFunc)
+	dynClient, err := dynamic.NewForConfig(clientConfig)
 	if err != nil {
 		return fmt.Errorf("unable to construct lister client to initialize provider: %v", err)
 	}
 
-	metricsProvider := provider.NewFakeProvider(clientPool, dynamicMapper)
+	metricsProvider := provider.NewFakeProvider(dynClient, dynamicMapper)
 	customMetricsProvider := metricsProvider
 	externalMetricsProvider := metricsProvider
 	if !o.EnableCustomMetricsAPI {

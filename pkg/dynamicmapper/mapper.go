@@ -11,6 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/discovery"
+	"k8s.io/client-go/restmapper"
 )
 
 // RengeneratingDiscoveryRESTMapper is a RESTMapper which Regenerates its cache of mappings periodically.
@@ -18,8 +19,7 @@ import (
 // We don't refresh automatically on cache misses, since we get called on every label, plenty of which will
 // be unrelated to Kubernetes resources.
 type RegeneratingDiscoveryRESTMapper struct {
-	discoveryClient   discovery.DiscoveryInterface
-	versionInterfaces meta.VersionInterfacesFunc
+	discoveryClient discovery.DiscoveryInterface
 
 	refreshInterval time.Duration
 
@@ -28,11 +28,10 @@ type RegeneratingDiscoveryRESTMapper struct {
 	delegate meta.RESTMapper
 }
 
-func NewRESTMapper(discoveryClient discovery.DiscoveryInterface, versionInterfaces meta.VersionInterfacesFunc, refreshInterval time.Duration) (*RegeneratingDiscoveryRESTMapper, error) {
+func NewRESTMapper(discoveryClient discovery.DiscoveryInterface, refreshInterval time.Duration) (*RegeneratingDiscoveryRESTMapper, error) {
 	mapper := &RegeneratingDiscoveryRESTMapper{
-		discoveryClient:   discoveryClient,
-		versionInterfaces: versionInterfaces,
-		refreshInterval:   refreshInterval,
+		discoveryClient: discoveryClient,
+		refreshInterval: refreshInterval,
 	}
 	if err := mapper.RegenerateMappings(); err != nil {
 		return nil, fmt.Errorf("unable to populate initial set of REST mappings: %v", err)
@@ -51,11 +50,11 @@ func (m *RegeneratingDiscoveryRESTMapper) RunUntil(stop <-chan struct{}) {
 }
 
 func (m *RegeneratingDiscoveryRESTMapper) RegenerateMappings() error {
-	resources, err := discovery.GetAPIGroupResources(m.discoveryClient)
+	resources, err := restmapper.GetAPIGroupResources(m.discoveryClient)
 	if err != nil {
 		return err
 	}
-	newDelegate := discovery.NewRESTMapper(resources, m.versionInterfaces)
+	newDelegate := restmapper.NewDiscoveryRESTMapper(resources)
 
 	// don't lock until we're ready to replace
 	m.mu.Lock()

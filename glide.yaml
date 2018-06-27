@@ -20,9 +20,6 @@ import:
   - pkg/api/errors
   - pkg/api/meta
   - pkg/api/resource
-  - pkg/apimachinery
-  - pkg/apimachinery/announced
-  - pkg/apimachinery/registered
   - pkg/apis/meta/internalversion
   - pkg/apis/meta/v1
   - pkg/conversion
@@ -33,7 +30,7 @@ import:
   - pkg/util/errors
   - pkg/util/wait
   - pkg/version
-  tag: kubernetes-1.10.0-rc.1
+  tag: kubernetes-1.11.0-rc.1
 
 - package: k8s.io/apiserver
   subpackages:
@@ -47,7 +44,7 @@ import:
   - pkg/server
   - pkg/server/options
   - pkg/util/logs
-  tag: kubernetes-1.10.0-rc.1
+  tag: kubernetes-1.11.0-rc.1
 
 - package: k8s.io/client-go
   subpackages:
@@ -60,7 +57,7 @@ import:
   - rest
   - testing
   - tools/clientcmd
-  tag: kubernetes-1.10.0-rc.1
+  tag: kubernetes-1.11.0-rc.1
 
 - package: k8s.io/metrics
   subpackages:
@@ -68,7 +65,7 @@ import:
   - pkg/apis/custom_metrics/install
   - pkg/apis/external_metrics
   - pkg/apis/external_metrics/install
-  tag: kubernetes-1.10.0-rc.1
+  tag: kubernetes-1.11.0-rc.1
 
 testImport:
 - package: github.com/stretchr/testify

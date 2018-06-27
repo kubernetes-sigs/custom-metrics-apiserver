@@ -17,6 +17,7 @@ limitations under the License.
 package apiserver
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/provider"
@@ -55,7 +56,7 @@ func (r *REST) NewList() runtime.Object {
 	return &custom_metrics.MetricValueList{}
 }
 
-func (r *REST) List(ctx genericapirequest.Context, options *metainternalversion.ListOptions) (runtime.Object, error) {
+func (r *REST) List(ctx context.Context, options *metainternalversion.ListOptions) (runtime.Object, error) {
 	// populate the label selector, defaulting to all
 	selector := labels.Everything()
 	if options != nil && options.LabelSelector != nil {

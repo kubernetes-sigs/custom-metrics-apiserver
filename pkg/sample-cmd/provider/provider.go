@@ -87,14 +87,14 @@ var (
 )
 
 type testingProvider struct {
-	client dynamic.ClientPool
+	client dynamic.Interface
 	mapper apimeta.RESTMapper
 
 	values          map[provider.CustomMetricInfo]int64
 	externalMetrics []externalMetric
 }
 
-func NewFakeProvider(client dynamic.ClientPool, mapper apimeta.RESTMapper) provider.MetricsProvider {
+func NewFakeProvider(client dynamic.Interface, mapper apimeta.RESTMapper) provider.MetricsProvider {
 	return &testingProvider{
 		client:          client,
 		mapper:          mapper,
@@ -181,10 +181,9 @@ func (p *testingProvider) GetRootScopedMetricByName(groupResource schema.GroupRe
 }
 
 func (p *testingProvider) GetRootScopedMetricBySelector(groupResource schema.GroupResource, selector labels.Selector, metricName string) (*custom_metrics.MetricValueList, error) {
-	// construct a client to list the names of objects matching the label selector
-	client, err := p.client.ClientForGroupVersionResource(groupResource.WithVersion(""))
-	if err != nil {
-		glog.Errorf("unable to construct dynamic client to list matching resource names: %v", err)
+	fullReses, err := p.mapper.ResourcesFor(groupResource.WithVersion(""))
+	if err != nil || len(fullReses) == 0 {
+		glog.Errorf("unable to get prefered GVRs for GR to list matching resource names: %v", err)
 		// don't leak implementation details to the user
 		return nil, apierr.NewInternalError(fmt.Errorf("unable to list matching resources"))
 	}
@@ -194,13 +193,7 @@ func (p *testingProvider) GetRootScopedMetricBySelector(groupResource schema.Gro
 		return nil, err
 	}
 
-	// we can construct a this APIResource ourself, since the dynamic client only uses Name and Namespaced
-	apiRes := &metav1.APIResource{
-		Name:       groupResource.Resource,
-		Namespaced: false,
-	}
-
-	matchingObjectsRaw, err := client.Resource(apiRes, "").
+	matchingObjectsRaw, err := p.client.Resource(fullReses[0]).
 		List(metav1.ListOptions{LabelSelector: selector.String()})
 	if err != nil {
 		return nil, err
@@ -217,10 +210,9 @@ func (p *testingProvider) GetNamespacedMetricByName(groupResource schema.GroupRe
 }
 
 func (p *testingProvider) GetNamespacedMetricBySelector(groupResource schema.GroupResource, namespace string, selector labels.Selector, metricName string) (*custom_metrics.MetricValueList, error) {
-	// construct a client to list the names of objects matching the label selector
-	client, err := p.client.ClientForGroupVersionResource(groupResource.WithVersion(""))
-	if err != nil {
-		glog.Errorf("unable to construct dynamic client to list matching resource names: %v", err)
+	fullReses, err := p.mapper.ResourcesFor(groupResource.WithVersion(""))
+	if err != nil || len(fullReses) == 0 {
+		glog.Errorf("unable to get prefered GVRs for GR to list matching resource names: %v", err)
 		// don't leak implementation details to the user
 		return nil, apierr.NewInternalError(fmt.Errorf("unable to list matching resources"))
 	}
@@ -230,13 +222,7 @@ func (p *testingProvider) GetNamespacedMetricBySelector(groupResource schema.Gro
 		return nil, err
 	}
 
-	// we can construct a this APIResource ourself, since the dynamic client only uses Name and Namespaced
-	apiRes := &metav1.APIResource{
-		Name:       groupResource.Resource,
-		Namespaced: true,
-	}
-
-	matchingObjectsRaw, err := client.Resource(apiRes, namespace).
+	matchingObjectsRaw, err := p.client.Resource(fullReses[0]).Namespace(namespace).
 		List(metav1.ListOptions{LabelSelector: selector.String()})
 	if err != nil {
 		return nil, err

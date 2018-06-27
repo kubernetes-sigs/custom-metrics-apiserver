@@ -23,7 +23,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	core "k8s.io/client-go/testing"
@@ -33,7 +32,7 @@ const testingMapperRefreshInterval = 1 * time.Second
 
 func setupMapper(t *testing.T, stopChan <-chan struct{}) (*RegeneratingDiscoveryRESTMapper, *FakeDiscovery) {
 	fakeDiscovery := &FakeDiscovery{Fake: &core.Fake{}}
-	mapper, err := NewRESTMapper(fakeDiscovery, apimeta.InterfacesForUnstructured, testingMapperRefreshInterval)
+	mapper, err := NewRESTMapper(fakeDiscovery, testingMapperRefreshInterval)
 	require.NoError(t, err, "constructing the rest mapper shouldn't have produced an error")
 
 	fakeDiscovery.Resources = []*metav1.APIResourceList{

@@ -25,9 +25,7 @@ import (
 
 	"github.com/emicklei/go-restful"
 
-	"k8s.io/apimachinery/pkg/apimachinery"
-	"k8s.io/apimachinery/pkg/apimachinery/announced"
-	"k8s.io/apimachinery/pkg/apimachinery/registered"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -35,7 +33,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	genericapi "k8s.io/apiserver/pkg/endpoints"
 	genericapifilters "k8s.io/apiserver/pkg/endpoints/filters"
-	"k8s.io/apiserver/pkg/endpoints/request"
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	"k8s.io/metrics/pkg/apis/custom_metrics"
 	installcm "k8s.io/metrics/pkg/apis/custom_metrics/install"
@@ -57,23 +54,21 @@ type defaultAPIServer struct {
 }
 
 var (
-	groupFactoryRegistry        = make(announced.APIGroupFactoryRegistry)
-	registry                    = registered.NewOrDie("")
 	Scheme                      = runtime.NewScheme()
 	Codecs                      = serializer.NewCodecFactory(Scheme)
 	prefix                      = genericapiserver.APIGroupPrefix
 	customMetricsGroupVersion   schema.GroupVersion
-	customMetricsGroupMeta      *apimachinery.GroupMeta
+	customMetricsGroupInfo      genericapiserver.APIGroupInfo
 	externalMetricsGroupVersion schema.GroupVersion
-	externalMetricsGroupMeta    *apimachinery.GroupMeta
+	externalMetricsGroupInfo    genericapiserver.APIGroupInfo
 	codec                       = Codecs.LegacyCodec()
 	emptySet                    = labels.Set{}
 	matchingSet                 = labels.Set{"foo": "bar"}
 )
 
 func init() {
-	installcm.Install(groupFactoryRegistry, registry, Scheme)
-	installem.Install(groupFactoryRegistry, registry, Scheme)
+	installcm.Install(Scheme)
+	installem.Install(Scheme)
 
 	// we need to add the options to empty v1
 	// TODO fix the server code to avoid this
@@ -89,10 +84,10 @@ func init() {
 		&metav1.APIResourceList{},
 	)
 
-	customMetricsGroupMeta = registry.GroupOrDie(custom_metrics.GroupName)
-	customMetricsGroupVersion = customMetricsGroupMeta.GroupVersion
-	externalMetricsGroupMeta = registry.GroupOrDie(external_metrics.GroupName)
-	externalMetricsGroupVersion = externalMetricsGroupMeta.GroupVersion
+	customMetricsGroupInfo = genericapiserver.NewDefaultAPIGroupInfo(custom_metrics.GroupName, Scheme, metav1.ParameterCodec, Codecs)
+	customMetricsGroupVersion = customMetricsGroupInfo.PrioritizedVersions[0]
+	externalMetricsGroupInfo = genericapiserver.NewDefaultAPIGroupInfo(external_metrics.GroupName, Scheme, metav1.ParameterCodec, Codecs)
+	externalMetricsGroupVersion = externalMetricsGroupInfo.PrioritizedVersions[0]
 }
 
 func extractBody(response *http.Response, object runtime.Object) error {
@@ -118,24 +113,20 @@ func handleCustomMetrics(prov provider.CustomMetricsProvider) http.Handler {
 	container.Router(restful.CurlyRouter{})
 	mux := container.ServeMux
 	resourceStorage := custommetricstorage.NewREST(prov)
-	reqContextMapper := request.NewRequestContextMapper()
 	group := &MetricsAPIGroupVersion{
 		DynamicStorage: resourceStorage,
 		APIGroupVersion: &genericapi.APIGroupVersion{
-			Root:         prefix,
-			GroupVersion: customMetricsGroupVersion,
+			Root:             prefix,
+			GroupVersion:     customMetricsGroupVersion,
+			MetaGroupVersion: customMetricsGroupInfo.MetaGroupVersion,
 
-			ParameterCodec:  metav1.ParameterCodec,
-			Serializer:      Codecs,
-			Creater:         Scheme,
-			Convertor:       Scheme,
-			UnsafeConvertor: runtime.UnsafeObjectConvertor(Scheme),
-			Typer:           Scheme,
-			Linker:          customMetricsGroupMeta.SelfLinker,
-			Mapper:          customMetricsGroupMeta.RESTMapper,
-
-			Context:                reqContextMapper,
-			OptionsExternalVersion: &schema.GroupVersion{Version: "v1"},
+			ParameterCodec:  customMetricsGroupInfo.ParameterCodec,
+			Serializer:      customMetricsGroupInfo.NegotiatedSerializer,
+			Creater:         customMetricsGroupInfo.Scheme,
+			Convertor:       customMetricsGroupInfo.Scheme,
+			UnsafeConvertor: runtime.UnsafeObjectConvertor(customMetricsGroupInfo.Scheme),
+			Typer:           customMetricsGroupInfo.Scheme,
+			Linker:          runtime.SelfLinker(meta.NewAccessor()),
 		},
 		ResourceLister: provider.NewCustomMetricResourceLister(prov),
 		Handlers:       &CMHandlers{},
@@ -147,8 +138,7 @@ func handleCustomMetrics(prov provider.CustomMetricsProvider) http.Handler {
 
 	var handler http.Handler = &defaultAPIServer{mux, container}
 	reqInfoResolver := genericapiserver.NewRequestInfoResolver(&genericapiserver.Config{})
-	handler = genericapifilters.WithRequestInfo(handler, reqInfoResolver, reqContextMapper)
-	handler = request.WithRequestContext(handler, reqContextMapper)
+	handler = genericapifilters.WithRequestInfo(handler, reqInfoResolver)
 	return handler
 }
 
@@ -157,27 +147,24 @@ func handleExternalMetrics(prov provider.ExternalMetricsProvider) http.Handler {
 	container.Router(restful.CurlyRouter{})
 	mux := container.ServeMux
 	resourceStorage := externalmetricstorage.NewREST(prov)
-	reqContextMapper := request.NewRequestContextMapper()
+
 	group := &MetricsAPIGroupVersion{
 		DynamicStorage: resourceStorage,
 		APIGroupVersion: &genericapi.APIGroupVersion{
-			Root:         prefix,
-			GroupVersion: externalMetricsGroupVersion,
+			Root:             prefix,
+			GroupVersion:     externalMetricsGroupVersion,
+			MetaGroupVersion: externalMetricsGroupInfo.MetaGroupVersion,
 
-			ParameterCodec:  metav1.ParameterCodec,
-			Serializer:      Codecs,
-			Creater:         Scheme,
-			Convertor:       Scheme,
-			UnsafeConvertor: runtime.UnsafeObjectConvertor(Scheme),
-			Typer:           Scheme,
-			Linker:          externalMetricsGroupMeta.SelfLinker,
-			Mapper:          externalMetricsGroupMeta.RESTMapper,
-
-			Context:                reqContextMapper,
-			OptionsExternalVersion: &schema.GroupVersion{Version: "v1"},
+			ParameterCodec:  externalMetricsGroupInfo.ParameterCodec,
+			Serializer:      externalMetricsGroupInfo.NegotiatedSerializer,
+			Creater:         externalMetricsGroupInfo.Scheme,
+			Convertor:       externalMetricsGroupInfo.Scheme,
+			UnsafeConvertor: runtime.UnsafeObjectConvertor(externalMetricsGroupInfo.Scheme),
+			Typer:           externalMetricsGroupInfo.Scheme,
+			Linker:          runtime.SelfLinker(meta.NewAccessor()),
 		},
 		ResourceLister: provider.NewExternalMetricResourceLister(prov),
-		Handlers:       &EMHandlers{},
+		Handlers:       &CMHandlers{},
 	}
 
 	if err := group.InstallREST(container); err != nil {
@@ -186,8 +173,7 @@ func handleExternalMetrics(prov provider.ExternalMetricsProvider) http.Handler {
 
 	var handler http.Handler = &defaultAPIServer{mux, container}
 	reqInfoResolver := genericapiserver.NewRequestInfoResolver(&genericapiserver.Config{})
-	handler = genericapifilters.WithRequestInfo(handler, reqInfoResolver, reqContextMapper)
-	handler = request.WithRequestContext(handler, reqContextMapper)
+	handler = genericapifilters.WithRequestInfo(handler, reqInfoResolver)
 	return handler
 }
 
