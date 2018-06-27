@@ -17,8 +17,6 @@ limitations under the License.
 package apiserver
 
 import (
-	"k8s.io/apimachinery/pkg/apimachinery/announced"
-	"k8s.io/apimachinery/pkg/apimachinery/registered"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -32,15 +30,13 @@ import (
 )
 
 var (
-	groupFactoryRegistry = make(announced.APIGroupFactoryRegistry)
-	registry             = registered.NewOrDie("")
-	Scheme               = runtime.NewScheme()
-	Codecs               = serializer.NewCodecFactory(Scheme)
+	Scheme = runtime.NewScheme()
+	Codecs = serializer.NewCodecFactory(Scheme)
 )
 
 func init() {
-	cminstall.Install(groupFactoryRegistry, registry, Scheme)
-	eminstall.Install(groupFactoryRegistry, registry, Scheme)
+	cminstall.Install(Scheme)
+	eminstall.Install(Scheme)
 
 	// we need to add the options to empty v1
 	// TODO fix the server code to avoid this
@@ -86,7 +82,7 @@ func (c *Config) Complete() completedConfig {
 // Each of the arguments: customMetricsProvider, externalMetricsProvider can be set either to
 // a provider implementation, or to nil to disable one of the APIs.
 func (c completedConfig) New(name string, customMetricsProvider provider.CustomMetricsProvider, externalMetricsProvider provider.ExternalMetricsProvider) (*CustomMetricsAdapterServer, error) {
-	genericServer, err := c.CompletedConfig.New(name, genericapiserver.EmptyDelegate) // completion is done in Complete, no need for a second time
+	genericServer, err := c.CompletedConfig.New(name, genericapiserver.NewEmptyDelegate()) // completion is done in Complete, no need for a second time
 	if err != nil {
 		return nil, err
 	}

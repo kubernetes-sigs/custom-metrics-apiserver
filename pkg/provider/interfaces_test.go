@@ -29,7 +29,7 @@ import (
 // restMapper creates a RESTMapper with just the types we need for
 // these tests.
 func restMapper() apimeta.RESTMapper {
-	mapper := apimeta.NewDefaultRESTMapper([]schema.GroupVersion{corev1.SchemeGroupVersion}, apimeta.InterfacesForUnstructured)
+	mapper := apimeta.NewDefaultRESTMapper([]schema.GroupVersion{corev1.SchemeGroupVersion})
 	mapper.Add(corev1.SchemeGroupVersion.WithKind("Pod"), apimeta.RESTScopeNamespace)
 
 	return mapper

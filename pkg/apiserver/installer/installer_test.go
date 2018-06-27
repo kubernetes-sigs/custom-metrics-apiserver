@@ -16,7 +16,6 @@ limitations under the License.
 package installer
 
 import (
-	"net/http"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -56,12 +55,8 @@ func TestScopeNamingGenerateLink(t *testing.T) {
 	reqInfo := &request.RequestInfo{
 		Resource: "services",
 	}
-	ctxFn := func(req *http.Request) request.Context {
-		return request.NewContext()
-	}
 	s := MetricsNaming{
 		handlers.ContextBasedNaming{
-			GetContext:         ctxFn,
 			SelfLinker:         selfLinker,
 			ClusterScoped:      false,
 			SelfLinkPathPrefix: "/api/v1/",

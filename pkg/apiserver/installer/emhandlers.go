@@ -24,7 +24,6 @@ import (
 	"k8s.io/apiserver/pkg/endpoints/handlers"
 	"k8s.io/apiserver/pkg/endpoints/handlers/negotiation"
 	"k8s.io/apiserver/pkg/endpoints/metrics"
-	"k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/registry/rest"
 
 	"github.com/emicklei/go-restful"
@@ -35,16 +34,9 @@ type EMHandlers struct{}
 // registerResourceHandlers registers the resource handlers for external metrics.
 // The implementation is based on corresponding registerResourceHandlers for Custom Metrics API
 func (ch *EMHandlers) registerResourceHandlers(a *MetricsAPIInstaller, ws *restful.WebService) error {
-	context := a.group.Context
-
 	optionsExternalVersion := a.group.GroupVersion
 	if a.group.OptionsExternalVersion != nil {
 		optionsExternalVersion = *a.group.OptionsExternalVersion
-	}
-
-	mapping, err := a.restMapping()
-	if err != nil {
-		return err
 	}
 
 	fqKindToRegister, err := a.getResourceKind(a.group.DynamicStorage)
@@ -71,29 +63,20 @@ func (ch *EMHandlers) registerResourceHandlers(a *MetricsAPIInstaller, ws *restf
 		return err
 	}
 
-	ctxFn := func(req *http.Request) request.Context {
-		if ctx, ok := context.Get(req); ok {
-			return request.WithUserAgent(ctx, req.Header.Get("User-Agent"))
-		}
-		return request.WithUserAgent(request.NewContext(), req.Header.Get("User-Agent"))
-	}
-
-	scope := mapping.Scope
-	namespaceParam := ws.PathParameter(scope.ArgumentName(), scope.ParamDescription()).DataType("string")
+	namespaceParam := ws.PathParameter("namespace", "object name and auth scope, such as for teams and projects").DataType("string")
 	nameParam := ws.PathParameter("name", "name of the described resource").DataType("string")
 
 	externalMetricParams := []*restful.Parameter{
 		namespaceParam,
 		nameParam,
 	}
-	externalMetricPath := scope.ParamName() + "/{" + scope.ArgumentName() + "}/{resource}"
+	externalMetricPath := "namespaces" + "/{namespace}/{resource}"
 
 	mediaTypes, streamMediaTypes := negotiation.MediaTypesForSerializer(a.group.Serializer)
 	allMediaTypes := append(mediaTypes, streamMediaTypes...)
 	ws.Produces(allMediaTypes...)
 
 	reqScope := handlers.RequestScope{
-		ContextFunc:     ctxFn,
 		Serializer:      a.group.Serializer,
 		ParameterCodec:  a.group.ParameterCodec,
 		Creater:         a.group.Creater,
@@ -117,10 +100,9 @@ func (ch *EMHandlers) registerResourceHandlers(a *MetricsAPIInstaller, ws *restf
 	doc := "list external metrics"
 	reqScope.Namer = MetricsNaming{
 		handlers.ContextBasedNaming{
-			GetContext:         ctxFn,
 			SelfLinker:         a.group.Linker,
 			ClusterScoped:      false,
-			SelfLinkPathPrefix: gpath.Join(a.prefix, scope.ParamName()) + "/",
+			SelfLinkPathPrefix: gpath.Join(a.prefix, "namespaces") + "/",
 		},
 	}
 

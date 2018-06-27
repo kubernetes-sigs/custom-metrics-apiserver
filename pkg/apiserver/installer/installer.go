@@ -23,7 +23,6 @@ import (
 	"strings"
 	"time"
 
-	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/conversion"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -75,7 +74,7 @@ func (g *MetricsAPIGroupVersion) InstallREST(container *restful.Container) error
 	if lister == nil {
 		return fmt.Errorf("must provide a dynamic lister for dynamic API groups")
 	}
-	versionDiscoveryHandler := discovery.NewAPIVersionHandler(g.Serializer, g.GroupVersion, lister, g.Context)
+	versionDiscoveryHandler := discovery.NewAPIVersionHandler(g.Serializer, g.GroupVersion, lister)
 	versionDiscoveryHandler.AddToWebService(ws)
 	container.Add(ws)
 	return utilerrors.NewAggregate(registrationErrors)
@@ -170,17 +169,6 @@ func (a *MetricsAPIInstaller) getResourceKind(storage rest.Storage) (schema.Grou
 		return schema.GroupVersionKind{}, fmt.Errorf("unable to locate fully qualified kind for %v: found %v when registering for %v", reflect.TypeOf(object), fqKinds, a.group.GroupVersion)
 	}
 	return fqKindToRegister, nil
-}
-
-// restMapping returns rest mapper for the resource provided by DynamicStorage.
-func (a *MetricsAPIInstaller) restMapping() (*meta.RESTMapping, error) {
-	// subresources must have parent resources, and follow the namespacing rules of their parent.
-	// So get the storage of the resource (which is the parent resource in case of subresources)
-	fqKindToRegister, err := a.getResourceKind(a.group.DynamicStorage)
-	if err != nil {
-		return nil, fmt.Errorf("unable to locate fully qualified kind for mapper resource for dynamic storage: %v", err)
-	}
-	return a.group.Mapper.RESTMapping(fqKindToRegister.GroupKind(), fqKindToRegister.Version)
 }
 
 func addParams(route *restful.RouteBuilder, params []*restful.Parameter) {

@@ -17,7 +17,7 @@ limitations under the License.
 package apiserver
 
 import (
-	"k8s.io/apimachinery/pkg/apimachinery"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -33,55 +33,51 @@ import (
 
 // InstallExternalMetricsAPI registers the api server in Kube Aggregator
 func (s *CustomMetricsAdapterServer) InstallExternalMetricsAPI() error {
+	groupInfo := genericapiserver.NewDefaultAPIGroupInfo(external_metrics.GroupName, Scheme, metav1.ParameterCodec, Codecs)
 
-	groupMeta := registry.GroupOrDie(external_metrics.GroupName)
-
+	mainGroupVer := groupInfo.PrioritizedVersions[0]
 	preferredVersionForDiscovery := metav1.GroupVersionForDiscovery{
-		GroupVersion: groupMeta.GroupVersion.String(),
-		Version:      groupMeta.GroupVersion.Version,
+		GroupVersion: mainGroupVer.String(),
+		Version:      mainGroupVer.Version,
 	}
 	groupVersion := metav1.GroupVersionForDiscovery{
-		GroupVersion: groupMeta.GroupVersion.String(),
-		Version:      groupMeta.GroupVersion.Version,
+		GroupVersion: mainGroupVer.String(),
+		Version:      mainGroupVer.Version,
 	}
 	apiGroup := metav1.APIGroup{
-		Name:             groupMeta.GroupVersion.Group,
+		Name:             mainGroupVer.Group,
 		Versions:         []metav1.GroupVersionForDiscovery{groupVersion},
 		PreferredVersion: preferredVersionForDiscovery,
 	}
 
-	emAPI := s.emAPI(groupMeta, &groupMeta.GroupVersion)
-
+	emAPI := s.emAPI(&groupInfo, mainGroupVer)
 	if err := emAPI.InstallREST(s.GenericAPIServer.Handler.GoRestfulContainer); err != nil {
 		return err
 	}
 
 	s.GenericAPIServer.DiscoveryGroupManager.AddGroup(apiGroup)
-	s.GenericAPIServer.Handler.GoRestfulContainer.Add(discovery.NewAPIGroupHandler(s.GenericAPIServer.Serializer, apiGroup, s.GenericAPIServer.RequestContextMapper()).WebService())
+	s.GenericAPIServer.Handler.GoRestfulContainer.Add(discovery.NewAPIGroupHandler(s.GenericAPIServer.Serializer, apiGroup).WebService())
 
 	return nil
 }
 
-func (s *CustomMetricsAdapterServer) emAPI(groupMeta *apimachinery.GroupMeta, groupVersion *schema.GroupVersion) *specificapi.MetricsAPIGroupVersion {
+func (s *CustomMetricsAdapterServer) emAPI(groupInfo *genericapiserver.APIGroupInfo, groupVersion schema.GroupVersion) *specificapi.MetricsAPIGroupVersion {
 	resourceStorage := metricstorage.NewREST(s.externalMetricsProvider)
 
 	return &specificapi.MetricsAPIGroupVersion{
 		DynamicStorage: resourceStorage,
 		APIGroupVersion: &genericapi.APIGroupVersion{
-			Root:         genericapiserver.APIGroupPrefix,
-			GroupVersion: *groupVersion,
+			Root:             genericapiserver.APIGroupPrefix,
+			GroupVersion:     groupVersion,
+			MetaGroupVersion: groupInfo.MetaGroupVersion,
 
-			ParameterCodec:  metav1.ParameterCodec,
-			Serializer:      Codecs,
-			Creater:         Scheme,
-			Convertor:       Scheme,
-			UnsafeConvertor: runtime.UnsafeObjectConvertor(Scheme),
-			Typer:           Scheme,
-			Linker:          groupMeta.SelfLinker,
-			Mapper:          groupMeta.RESTMapper,
-
-			Context:                s.GenericAPIServer.RequestContextMapper(),
-			OptionsExternalVersion: &schema.GroupVersion{Version: "v1"},
+			ParameterCodec:  groupInfo.ParameterCodec,
+			Serializer:      groupInfo.NegotiatedSerializer,
+			Creater:         groupInfo.Scheme,
+			Convertor:       groupInfo.Scheme,
+			UnsafeConvertor: runtime.UnsafeObjectConvertor(groupInfo.Scheme),
+			Typer:           groupInfo.Scheme,
+			Linker:          runtime.SelfLinker(meta.NewAccessor()),
 		},
 		ResourceLister: provider.NewExternalMetricResourceLister(s.externalMetricsProvider),
 		Handlers:       &specificapi.EMHandlers{},
