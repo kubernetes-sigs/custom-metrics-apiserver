@@ -20,3 +20,6 @@ gofmt:
 	./hack/gofmt-all.sh
 
 verify: verify-gofmt test
+
+run:
+	./$(OUT_DIR)/$(ARCH)/sample-adapter
