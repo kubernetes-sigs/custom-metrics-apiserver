@@ -1,8 +1,8 @@
 hash: 7abe959d10d6e0f3642bda9ea8c380d882933c0c9645dd13955253faf9b1118b
 updated: 2018-06-25T16:34:00.593382031-04:00
 imports:
-- name: bitbucket.org/ww/goautoneg
-  version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
+- name: github.com/berlincount/go-autoneg
+  version: a547fc61f48d567d5b4ec6f8aee5573d8efce11d
 - name: github.com/beorn7/perks
   version: 3ac7bf7a47d159a033b107610db8a1b6575507a4
   subpackages:
