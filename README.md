@@ -24,65 +24,24 @@ A sample implementation of this can be found in the file `sample-main.go`
 and `pkg/sample-cmd` directory.  You'll want to have the equivalent files
 in your project.
 
-### Example for developing your own Custom Metric Server API
-This is an example of how to vendor this project and setup your own provider.  This example uses [glide](https://github.com/Masterminds/glide) but you can use any other [dependency management tool](https://github.com/golang/go/wiki/PackageManagementTools) of your choice.
+### Building your own Custom Metric Server 
 
-#### Create your new project:
-
-- `mkdir $GOPATH/src/github.com/your-company/my-custom-metric-server`
-- `cd $GOPATH/src/github.com/your-company/my-custom-metric-server`
-
-#### Vendor this repository:
-
-- `glide create`
-- `glide get github.com/kubernetes-incubator/custom-metrics-apiserver`
-
-#### Create the entry point from the sample:
-
-- `touch main.go` 
-
-> See the [sample entry point](https://github.com/kubernetes-incubator/custom-metrics-apiserver/blob/master/sample-main.go) for a complete example
-
-#### Add the server:
-
-- `mkdir -p pkg/cmd/server`
-- `touch pkg/cmd/server/start.go` 
-
-> See the [sample server](https://github.com/kubernetes-incubator/custom-metrics-apiserver/blob/master/pkg/sample-cmd/server/start.go) for complete example
-
-#### Add and implement [the custom metrics interface](https://github.com/kubernetes-incubator/custom-metrics-apiserver/blob/d8f23423aa1d0ff2bc9656da863d721725b3c68a/pkg/provider/interfaces.go#L84) for your provider:
-
-- `mkdir -p pkg/cmd/provider`
-- `touch pkg/cmd/server/provider.go` 
-
-> See the [sample provider](https://github.com/kubernetes-incubator/custom-metrics-apiserver/blob/master/pkg/sample-cmd/provider/provider.go) for complete example
-
-#### Build the project
-After adding and implementing the files above build you project and run it.
+See [getting-started.md](docs/getting-started.md) for a walk through on creating your own custom metric server api.
 
 ## Development for boilerplate project
 
 ### Pre-reqs
 
 - [glide](https://github.com/Masterminds/glide#install) to install dependencies before you can use this project.
-- [Go](https://golang.org/doc/install) 1.8+ 
+- [Go](https://golang.org/doc/install) same version of [Go as Kubernetes](https://github.com/kubernetes/community/blob/master/contributors/devel/development.md#go)
 - [Mercurial](https://www.mercurial-scm.org/downloads) - one of dependencies requires hg
 - [git](https://git-scm.com/downloads)
 
 ### Clone and Build boilerplate project
 
-Clone this repository:
-- `cd $GOPATH` 
-- `go get github.com/kubernetes-incubator/custom-metrics-apiserver`
-- `cd $GOPATH/src/github.com/kubernetes-incubator/custom-metrics-apiserver`
+There is a sample adapter in this repository that can be used for testing changes to the repository, and also acts as an example implementations.
 
-Fork project in GitHub and add your remote (**optional** if you want to contribute back on this project):
-- [Fork in GitHub](https://help.github.com/articles/fork-a-repo/)
-- `git remote add fork <fork-url>`
-
-Build the project and run it:
-- `make`
-- `make run`
+To build it, run `make sample-container`, and then `kubectl create -f sample-adapter-deploy`
 
 ## Compatibility
 
