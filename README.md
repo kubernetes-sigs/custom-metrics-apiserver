@@ -41,7 +41,13 @@ See [getting-started.md](docs/getting-started.md) for a walk through on creating
 
 There is a sample adapter in this repository that can be used for testing changes to the repository, and also acts as an example implementations.
 
-To build it, run `make sample-container`, and then `kubectl create -f sample-adapter-deploy`
+To build it:
+
+```bash
+export REGISTRY=<your registory name>
+make sample-container
+kubectl create -f sample-deploy/manifests
+```
 
 ## Compatibility
 
