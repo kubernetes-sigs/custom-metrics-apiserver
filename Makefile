@@ -47,7 +47,7 @@ gofmt:
 verify: verify-gofmt test
 
 sample-container: build
-	cp deploy/Dockerfile $(TEMP_DIR)
+	cp sample-deploy/Dockerfile $(TEMP_DIR)
 	cp  $(OUT_DIR)/$(ARCH)/sample-adapter $(TEMP_DIR)/adapter
 	cd $(TEMP_DIR) && sed -i "s|BASEIMAGE|scratch|g" Dockerfile
 	docker build -t $(REGISTRY)/$(IMAGE)-$(ARCH):$(VERSION) $(TEMP_DIR)
