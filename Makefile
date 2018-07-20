@@ -48,7 +48,8 @@ verify: verify-gofmt test
 
 sample-container: build
 	cp sample-deploy/Dockerfile $(TEMP_DIR)
-	cp  $(OUT_DIR)/$(ARCH)/sample-adapter $(TEMP_DIR)/adapter
+	cp $(OUT_DIR)/$(ARCH)/sample-adapter $(TEMP_DIR)/adapter
 	cd $(TEMP_DIR) && sed -i "s|BASEIMAGE|scratch|g" Dockerfile
+	sed -i 's|REGISTRY|'${REGISTRY}'|g' sample-deploy/manifests/custom-metrics-apiserver-deployment.yaml
 	docker build -t $(REGISTRY)/$(IMAGE)-$(ARCH):$(VERSION) $(TEMP_DIR)
 	rm -rf $(TEMP_DIR)
