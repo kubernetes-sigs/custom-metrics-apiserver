@@ -53,3 +53,6 @@ sample-container: build
 	sed -i 's|REGISTRY|'${REGISTRY}'|g' sample-deploy/manifests/custom-metrics-apiserver-deployment.yaml
 	docker build -t $(REGISTRY)/$(IMAGE)-$(ARCH):$(VERSION) $(TEMP_DIR)
 	rm -rf $(TEMP_DIR)
+
+sample-push: 
+	docker push $(REGISTRY)/$(IMAGE)-$(ARCH):$(VERSION)

@@ -46,7 +46,9 @@ To build it:
 ```bash
 export REGISTRY=<your registory name>
 make sample-container
-kubectl create -f sample-deploy/manifests
+make sample-push
+kubectl create namespace custom-metrics
+kubectl apply -f sample-deploy/manifests
 ```
 
 ## Compatibility
