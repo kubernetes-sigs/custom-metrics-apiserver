@@ -27,3 +27,9 @@ spec:
         - --v=10
         ports:
         - containerPort: 6443
+        volumeMounts:
+        - mountPath: /tmp
+          name: temp-vol
+      volumes:
+      - name: temp-vol
+        emptyDir: {}
