@@ -11,23 +11,18 @@ This is an example of how to vendor this project and setup your own provider.  T
 - `glide create`
 - `glide get github.com/kubernetes-incubator/custom-metrics-apiserver`
 
-## Create the entry point from the sample:
+## Create the entry point and add the server:
 
-- `touch main.go` 
+- `mkdir -p cmd`
+- `touch cmd/main.go`
+- `touch cmd/start.go` 
 
-> See the [sample entry point](https://github.com/kubernetes-incubator/custom-metrics-apiserver/blob/master/sample-main.go) for a complete example
-
-## Add the server:
-
-- `mkdir -p pkg/cmd/server`
-- `touch pkg/cmd/server/start.go` 
-
-> See the [sample server](https://github.com/kubernetes-incubator/custom-metrics-apiserver/blob/master/pkg/sample-cmd/server/start.go) for complete example
+> See the [sample server](https://github.com/kubernetes-incubator/custom-metrics-apiserver/blob/master/pkg/sample-cmd/server/start.go) and [sample entry point](https://github.com/kubernetes-incubator/custom-metrics-apiserver/blob/master/sample-main.go) for an example implementation
 
 ## Add and implement [the custom metrics interface](https://github.com/kubernetes-incubator/custom-metrics-apiserver/blob/d8f23423aa1d0ff2bc9656da863d721725b3c68a/pkg/provider/interfaces.go#L84) for your provider:
 
-- `mkdir -p pkg/cmd/provider`
-- `touch pkg/cmd/server/provider.go` 
+- `mkdir -p pkg/provider`
+- `touch pkg/provider/provider.go` 
 
 > See the [sample provider](https://github.com/kubernetes-incubator/custom-metrics-apiserver/blob/master/pkg/sample-cmd/provider/provider.go) for complete example
 

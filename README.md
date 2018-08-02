@@ -41,12 +41,13 @@ See [getting-started.md](docs/getting-started.md) for a walk through on creating
 
 There is a sample adapter in this repository that can be used for testing changes to the repository, and also acts as an example implementations.
 
-To build it:
+To build and deploy it:
 
 ```bash
 export REGISTRY=<your registory name>
 make sample-container
-make sample-push
+
+docker push $(REGISTRY)/k8s-custom-metric-adapter-sample
 kubectl create namespace custom-metrics
 kubectl apply -f sample-deploy/manifests
 ```
