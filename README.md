@@ -47,9 +47,15 @@ To build and deploy it:
 export REGISTRY=<your registory name>
 make sample-container
 
-docker push $(REGISTRY)/k8s-custom-metric-adapter-sample
+docker push $REGISTRY/k8s-custom-metric-adapter-sample
 kubectl create namespace custom-metrics
 kubectl apply -f sample-deploy/manifests
+```
+
+After the deployment you can query the sample adapter with:
+
+```
+kubectl get --raw "/apis/custom.metrics.k8s.io/v1beta1" | jq .
 ```
 
 ## Compatibility
