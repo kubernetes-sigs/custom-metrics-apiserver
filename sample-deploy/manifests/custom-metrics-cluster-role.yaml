@@ -6,4 +6,4 @@ rules:
 - apiGroups:
   - custom.metrics.k8s.io
   resources: ["*"]
-  verbs: ["*"]
+  verbs: ["get", "list"]

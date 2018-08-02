@@ -6,6 +6,7 @@ rules:
 - apiGroups:
   - ""
   resources:
+  #this should be the resources that you'll be able to query metrics for
   - namespaces
   - pods
   - services
