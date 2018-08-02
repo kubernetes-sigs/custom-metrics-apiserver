@@ -1,3 +1,3 @@
 FROM BASEIMAGE
 COPY adapter /
-ENTRYPOINT ["/adapter --logtostderr"]
+ENTRYPOINT ["/adapter", "--logtostderr=true"]
