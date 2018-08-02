@@ -24,10 +24,39 @@ A sample implementation of this can be found in the file `sample-main.go`
 and `pkg/sample-cmd` directory.  You'll want to have the equivalent files
 in your project.
 
-### A note on Dependencies
+### Building your own Custom Metric Server 
 
-You'll need to `glide install` dependencies before you can use this
-project.
+See [getting-started.md](docs/getting-started.md) for a walk through on creating your own custom metric server api.
+
+## Development for boilerplate project
+
+### Pre-reqs
+
+- [glide](https://github.com/Masterminds/glide#install) to install dependencies before you can use this project.
+- [Go](https://golang.org/doc/install) same version of [Go as Kubernetes](https://github.com/kubernetes/community/blob/master/contributors/devel/development.md#go)
+- [Mercurial](https://www.mercurial-scm.org/downloads) - one of dependencies requires hg
+- [git](https://git-scm.com/downloads)
+
+### Clone and Build boilerplate project
+
+There is a sample adapter in this repository that can be used for testing changes to the repository, and also acts as an example implementations.
+
+To build and deploy it:
+
+```bash
+export REGISTRY=<your registory name>
+make sample-container
+
+docker push $REGISTRY/k8s-custom-metric-adapter-sample
+kubectl create namespace custom-metrics
+kubectl apply -f sample-deploy/manifests
+```
+
+After the deployment you can query the sample adapter with:
+
+```
+kubectl get --raw "/apis/custom.metrics.k8s.io/v1beta1" | jq .
+```
 
 ## Compatibility
 
