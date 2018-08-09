@@ -11,22 +11,20 @@ implementation backed by fake data.
 
 ## How to use this repository
 
-In order to use this repository, you should vendor this repository at
-`github.com/kubernetes-incubator/custom-metrics-apiserver`, and implement the
-`"github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/provider".CustomMetricsProvider`
-interface.  You can then pass this to the main setup functions.
+This repository is designed to be used as a library. First, implement one
+or more of the metrics provider interfaces in `pkg/provider` (for example,
+`CustomMetricsProvider`), depending on which APIs you want to support.
 
-The `pkg/cmd` package contains the building blocks of the actual API
-server setup.  You'll most likely want to wrap the existing options and
-flags setup to add your own flags for configuring your provider.
+Then, use the `AdapterBase` in `pkg/cmd` to initialize the necessary flags
+and set up the API server, passing in your providers.
 
-A sample implementation of this can be found in the file `sample-main.go`
-and `pkg/sample-cmd` directory.  You'll want to have the equivalent files
-in your project.
+More information can be found in the [getting started
+guide](/docs/getting-started.md), and a sample implementation can be found
+in the [sample directory](/sample).
 
-### Building your own Custom Metric Server 
-
-See [getting-started.md](docs/getting-started.md) for a walk through on creating your own custom metric server api.
+It is *strongly* suggested that you make use of the dependency versions
+listed in [glide.yaml](/glide.yaml), as mismatched versions of Kubernetes
+dependencies can lead to build issues.
 
 ## Development for boilerplate project
 
@@ -39,15 +37,20 @@ See [getting-started.md](docs/getting-started.md) for a walk through on creating
 
 ### Clone and Build boilerplate project
 
-There is a sample adapter in this repository that can be used for testing changes to the repository, and also acts as an example implementations.
+There is a sample adapter in this repository that can be used for testing
+changes to the repository, and also acts as an example implementations.
 
 To build and deploy it:
 
 ```bash
-export REGISTRY=<your registory name>
+# build the sample container as $REGISTRY/k8s-custom-metric-adapter-sample
+export REGISTRY=<some-prefix>
 make sample-container
 
+# push the container up to a registry (optional if your cluster is local)
 docker push $REGISTRY/k8s-custom-metric-adapter-sample
+
+# launch the adapter using the sample deployment files
 kubectl create namespace custom-metrics
 kubectl apply -f sample-deploy/manifests
 ```
@@ -55,7 +58,8 @@ kubectl apply -f sample-deploy/manifests
 After the deployment you can query the sample adapter with:
 
 ```
-kubectl get --raw "/apis/custom.metrics.k8s.io/v1beta1" | jq .
+# you can pipe to `jq .` to pretty-print the output, if it's installed
+kubectl get --raw "/apis/custom.metrics.k8s.io/v1beta1"
 ```
 
 ## Compatibility

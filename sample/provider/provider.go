@@ -233,6 +233,7 @@ func (p *testingProvider) GetNamespacedMetricBySelector(groupResource schema.Gro
 func (p *testingProvider) ListAllMetrics() []provider.CustomMetricInfo {
 	// TODO: maybe dynamically generate this?
 	return []provider.CustomMetricInfo{
+		// these are mostly arbitrary examples
 		{
 			GroupResource: schema.GroupResource{Group: "", Resource: "pods"},
 			Metric:        "packets-per-second",
@@ -245,7 +246,7 @@ func (p *testingProvider) ListAllMetrics() []provider.CustomMetricInfo {
 		},
 		{
 			GroupResource: schema.GroupResource{Group: "", Resource: "namespaces"},
-			Metric:        "queue-length",
+			Metric:        "work-queue-length",
 			Namespaced:    false,
 		},
 	}
