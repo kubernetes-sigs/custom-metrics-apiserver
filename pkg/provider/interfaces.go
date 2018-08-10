@@ -38,7 +38,6 @@ type CustomMetricInfo struct {
 // ExternalMetricInfo describes a metric.
 type ExternalMetricInfo struct {
 	Metric string
-	Labels map[string]string
 }
 
 func (i CustomMetricInfo) String() string {
@@ -103,7 +102,7 @@ type CustomMetricsProvider interface {
 // implementation how to translate metricSelector to a filter for metric values.
 // Namespace can be used by the implemetation for metric identification, access control or ignored.
 type ExternalMetricsProvider interface {
-	GetExternalMetric(namespace string, metricName string, metricSelector labels.Selector) (*external_metrics.ExternalMetricValueList, error)
+	GetExternalMetric(namespace string, metricSelector labels.Selector, info ExternalMetricInfo) (*external_metrics.ExternalMetricValueList, error)
 
 	ListAllExternalMetrics() []ExternalMetricInfo
 }

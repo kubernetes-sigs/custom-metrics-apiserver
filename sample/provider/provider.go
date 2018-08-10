@@ -36,8 +36,9 @@ import (
 // TODO: apierr "k8s.io/apimachinery/pkg/api/errors"
 
 type externalMetric struct {
-	info  provider.ExternalMetricInfo
-	value external_metrics.ExternalMetricValue
+	info   provider.ExternalMetricInfo
+	labels map[string]string
+	value  external_metrics.ExternalMetricValue
 }
 
 var (
@@ -45,10 +46,8 @@ var (
 		{
 			info: provider.ExternalMetricInfo{
 				Metric: "my-external-metric",
-				Labels: map[string]string{
-					"foo": "bar",
-				},
 			},
+			labels: map[string]string{"foo": "bar"},
 			value: external_metrics.ExternalMetricValue{
 				MetricName: "my-external-metric",
 				MetricLabels: map[string]string{
@@ -60,10 +59,8 @@ var (
 		{
 			info: provider.ExternalMetricInfo{
 				Metric: "my-external-metric",
-				Labels: map[string]string{
-					"foo": "baz",
-				},
 			},
+			labels: map[string]string{"foo": "baz"},
 			value: external_metrics.ExternalMetricValue{
 				MetricName: "my-external-metric",
 				MetricLabels: map[string]string{
@@ -75,8 +72,8 @@ var (
 		{
 			info: provider.ExternalMetricInfo{
 				Metric: "other-external-metric",
-				Labels: map[string]string{},
 			},
+			labels: map[string]string{},
 			value: external_metrics.ExternalMetricValue{
 				MetricName:   "other-external-metric",
 				MetricLabels: map[string]string{},
@@ -188,11 +185,11 @@ func (p *testingProvider) ListAllMetrics() []provider.CustomMetricInfo {
 		},
 	}
 }
-func (p *testingProvider) GetExternalMetric(namespace string, metricName string, metricSelector labels.Selector) (*external_metrics.ExternalMetricValueList, error) {
+func (p *testingProvider) GetExternalMetric(namespace string, metricSelector labels.Selector, info provider.ExternalMetricInfo) (*external_metrics.ExternalMetricValueList, error) {
 	matchingMetrics := []external_metrics.ExternalMetricValue{}
 	for _, metric := range p.externalMetrics {
-		if metric.info.Metric == metricName &&
-			metricSelector.Matches(labels.Set(metric.info.Labels)) {
+		if metric.info.Metric == info.Metric &&
+			metricSelector.Matches(labels.Set(metric.labels)) {
 			metricValue := metric.value
 			metricValue.Timestamp = metav1.Now()
 			matchingMetrics = append(matchingMetrics, metricValue)
