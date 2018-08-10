@@ -24,6 +24,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/metrics/pkg/apis/custom_metrics"
 	"k8s.io/metrics/pkg/apis/external_metrics"
@@ -102,13 +103,7 @@ func NewFakeProvider(client dynamic.Interface, mapper apimeta.RESTMapper) provid
 	}
 }
 
-func (p *testingProvider) valueFor(groupResource schema.GroupResource, metricName string, namespaced bool) (int64, error) {
-	info := provider.CustomMetricInfo{
-		GroupResource: groupResource,
-		Metric:        metricName,
-		Namespaced:    namespaced,
-	}
-
+func (p *testingProvider) valueFor(info provider.CustomMetricInfo) (int64, error) {
 	info, _, err := info.Normalized(p.mapper)
 	if err != nil {
 		return 0, err
@@ -121,8 +116,8 @@ func (p *testingProvider) valueFor(groupResource schema.GroupResource, metricNam
 	return value, nil
 }
 
-func (p *testingProvider) metricFor(value int64, info provider.CustomMetricInfo, namespace string, name string) (*custom_metrics.MetricValue, error) {
-	objRef, err := helpers.ReferenceFor(p.mapper, info, namespace, name)
+func (p *testingProvider) metricFor(value int64, name types.NamespacedName, info provider.CustomMetricInfo) (*custom_metrics.MetricValue, error) {
+	objRef, err := helpers.ReferenceFor(p.mapper, name, info)
 	if err != nil {
 		return nil, err
 	}
@@ -135,15 +130,15 @@ func (p *testingProvider) metricFor(value int64, info provider.CustomMetricInfo,
 	}, nil
 }
 
-func (p *testingProvider) metricsFor(totalValue int64, info provider.CustomMetricInfo, namespace string, selector labels.Selector) (*custom_metrics.MetricValueList, error) {
-	names, err := helpers.ListObjectNames(p.mapper, p.client, info, "", selector)
+func (p *testingProvider) metricsFor(totalValue int64, namespace string, selector labels.Selector, info provider.CustomMetricInfo) (*custom_metrics.MetricValueList, error) {
+	names, err := helpers.ListObjectNames(p.mapper, p.client, namespace, selector, info)
 	if err != nil {
 		return nil, err
 	}
 
 	res := make([]custom_metrics.MetricValue, len(names))
 	for i, name := range names {
-		value, err := p.metricFor(100*totalValue/int64(len(res)), info, namespace, name)
+		value, err := p.metricFor(100*totalValue/int64(len(res)), types.NamespacedName{Namespace: namespace, Name: name}, info)
 		if err != nil {
 			return nil, err
 		}
@@ -155,58 +150,21 @@ func (p *testingProvider) metricsFor(totalValue int64, info provider.CustomMetri
 	}, nil
 }
 
-func (p *testingProvider) GetRootScopedMetricByName(groupResource schema.GroupResource, name string, metricName string) (*custom_metrics.MetricValue, error) {
-	value, err := p.valueFor(groupResource, metricName, false)
+func (p *testingProvider) GetMetricByName(name types.NamespacedName, info provider.CustomMetricInfo) (*custom_metrics.MetricValue, error) {
+	value, err := p.valueFor(info)
 	if err != nil {
 		return nil, err
 	}
-	return p.metricFor(value, provider.CustomMetricInfo{
-		GroupResource: groupResource,
-		Metric:        metricName,
-		Namespaced:    false,
-	}, "", name)
+	return p.metricFor(value, name, info)
 }
 
-func (p *testingProvider) GetRootScopedMetricBySelector(groupResource schema.GroupResource, selector labels.Selector, metricName string) (*custom_metrics.MetricValueList, error) {
-	totalValue, err := p.valueFor(groupResource, metricName, false)
+func (p *testingProvider) GetMetricBySelector(namespace string, selector labels.Selector, info provider.CustomMetricInfo) (*custom_metrics.MetricValueList, error) {
+	totalValue, err := p.valueFor(info)
 	if err != nil {
 		return nil, err
 	}
 
-	info := provider.CustomMetricInfo{
-		GroupResource: groupResource,
-		Metric:        metricName,
-		Namespaced:    false,
-	}
-
-	return p.metricsFor(totalValue, info, "", selector)
-}
-
-func (p *testingProvider) GetNamespacedMetricByName(groupResource schema.GroupResource, namespace string, name string, metricName string) (*custom_metrics.MetricValue, error) {
-	value, err := p.valueFor(groupResource, metricName, true)
-	if err != nil {
-		return nil, err
-	}
-	return p.metricFor(value, provider.CustomMetricInfo{
-		GroupResource: groupResource,
-		Metric:        metricName,
-		Namespaced:    true,
-	}, namespace, name)
-}
-
-func (p *testingProvider) GetNamespacedMetricBySelector(groupResource schema.GroupResource, namespace string, selector labels.Selector, metricName string) (*custom_metrics.MetricValueList, error) {
-	info := provider.CustomMetricInfo{
-		GroupResource: groupResource,
-		Metric:        metricName,
-		Namespaced:    true,
-	}
-
-	totalValue, err := p.valueFor(groupResource, metricName, true)
-	if err != nil {
-		return nil, err
-	}
-
-	return p.metricsFor(totalValue, info, namespace, selector)
+	return p.metricsFor(totalValue, namespace, selector, info)
 }
 
 func (p *testingProvider) ListAllMetrics() []provider.CustomMetricInfo {

@@ -31,6 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
+	"k8s.io/apimachinery/pkg/types"
 	genericapi "k8s.io/apiserver/pkg/endpoints"
 	genericapifilters "k8s.io/apiserver/pkg/endpoints/filters"
 	genericapiserver "k8s.io/apiserver/pkg/server"
@@ -43,7 +44,7 @@ import (
 	"github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/provider"
 	custommetricstorage "github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/registry/custom_metrics"
 	externalmetricstorage "github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/registry/external_metrics"
-	sampleprovider "github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/sample-cmd/provider"
+	sampleprovider "github.com/kubernetes-incubator/custom-metrics-apiserver/sample/provider"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 )
 
@@ -185,52 +186,20 @@ type fakeCMProvider struct {
 	metrics                []provider.CustomMetricInfo
 }
 
-func (p *fakeCMProvider) GetRootScopedMetricByName(groupResource schema.GroupResource, name string, metricName string) (*custom_metrics.MetricValue, error) {
-	metricId := groupResource.String() + "/" + name + "/" + metricName
-	values, ok := p.rootValues[metricId]
-	if !ok {
-		return nil, fmt.Errorf("non-existent metric requested (id: %s)", metricId)
-	}
-
-	return &values[0], nil
-}
-
-func (p *fakeCMProvider) GetRootScopedMetricBySelector(groupResource schema.GroupResource, selector labels.Selector, metricName string) (*custom_metrics.MetricValueList, error) {
-	metricId := groupResource.String() + "/*/" + metricName
-	values, ok := p.rootValues[metricId]
-	if !ok {
-		return nil, fmt.Errorf("non-existent metric requested (id: %s)", metricId)
-	}
-
-	var trimmedValues custom_metrics.MetricValueList
-
-	if trimmedCount, ok := p.rootSubsetCounts[metricId]; ok {
-		trimmedValues = custom_metrics.MetricValueList{
-			Items: make([]custom_metrics.MetricValue, 0, trimmedCount),
-		}
-		for i := range values {
-			var lbls labels.Labels
-			if i < trimmedCount {
-				lbls = matchingSet
-			} else {
-				lbls = emptySet
-			}
-			if selector.Matches(lbls) {
-				trimmedValues.Items = append(trimmedValues.Items, custom_metrics.MetricValue{})
-			}
-		}
+func (p *fakeCMProvider) valuesFor(name types.NamespacedName, info provider.CustomMetricInfo) (string, []custom_metrics.MetricValue, bool) {
+	if info.Namespaced {
+		metricId := name.Namespace + "/" + info.GroupResource.String() + "/" + name.Name + "/" + info.Metric
+		values, ok := p.namespacedValues[metricId]
+		return metricId, values, ok
 	} else {
-		trimmedValues = custom_metrics.MetricValueList{
-			Items: values,
-		}
+		metricId := info.GroupResource.String() + "/" + name.Name + "/" + info.Metric
+		values, ok := p.rootValues[metricId]
+		return metricId, values, ok
 	}
-
-	return &trimmedValues, nil
 }
 
-func (p *fakeCMProvider) GetNamespacedMetricByName(groupResource schema.GroupResource, namespace string, name string, metricName string) (*custom_metrics.MetricValue, error) {
-	metricId := namespace + "/" + groupResource.String() + "/" + name + "/" + metricName
-	values, ok := p.namespacedValues[metricId]
+func (p *fakeCMProvider) GetMetricByName(name types.NamespacedName, info provider.CustomMetricInfo) (*custom_metrics.MetricValue, error) {
+	metricId, values, ok := p.valuesFor(name, info)
 	if !ok {
 		return nil, fmt.Errorf("non-existent metric requested (id: %s)", metricId)
 	}
@@ -238,16 +207,22 @@ func (p *fakeCMProvider) GetNamespacedMetricByName(groupResource schema.GroupRes
 	return &values[0], nil
 }
 
-func (p *fakeCMProvider) GetNamespacedMetricBySelector(groupResource schema.GroupResource, namespace string, selector labels.Selector, metricName string) (*custom_metrics.MetricValueList, error) {
-	metricId := namespace + "/" + groupResource.String() + "/*/" + metricName
-	values, ok := p.namespacedValues[metricId]
+func (p *fakeCMProvider) GetMetricBySelector(namespace string, selector labels.Selector, info provider.CustomMetricInfo) (*custom_metrics.MetricValueList, error) {
+	metricId, values, ok := p.valuesFor(types.NamespacedName{Namespace: namespace, Name: "*"}, info)
 	if !ok {
 		return nil, fmt.Errorf("non-existent metric requested (id: %s)", metricId)
 	}
 
 	var trimmedValues custom_metrics.MetricValueList
 
-	if trimmedCount, ok := p.namespacedSubsetCounts[metricId]; ok {
+	var subsetCounts map[string]int
+	if info.Namespaced {
+		subsetCounts = p.namespacedSubsetCounts
+	} else {
+		subsetCounts = p.rootSubsetCounts
+	}
+
+	if trimmedCount, ok := subsetCounts[metricId]; ok {
 		trimmedValues = custom_metrics.MetricValueList{
 			Items: make([]custom_metrics.MetricValue, 0, trimmedCount),
 		}

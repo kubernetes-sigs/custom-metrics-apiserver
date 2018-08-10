@@ -25,6 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/metrics/pkg/apis/custom_metrics"
 
@@ -48,9 +49,9 @@ func ResourceFor(mapper apimeta.RESTMapper, info provider.CustomMetricInfo) (sch
 
 // ReferenceFor returns a new ObjectReference for the given group-resource and name.
 // The group-resource is converted into a group-version-kind using the given RESTMapper.
-// You can use this to easily construct an object reference for use in the DescribedObject field
-// of CustomMetricInfo.
-func ReferenceFor(mapper apimeta.RESTMapper, info provider.CustomMetricInfo, namespace, name string) (custom_metrics.ObjectReference, error) {
+// You can use this to easily construct an object reference for use in the DescribedObject
+// field of CustomMetricInfo.
+func ReferenceFor(mapper apimeta.RESTMapper, name types.NamespacedName, info provider.CustomMetricInfo) (custom_metrics.ObjectReference, error) {
 	kind, err := mapper.KindFor(info.GroupResource.WithVersion(""))
 	if err != nil {
 		return custom_metrics.ObjectReference{}, err
@@ -61,15 +62,15 @@ func ReferenceFor(mapper apimeta.RESTMapper, info provider.CustomMetricInfo, nam
 	return custom_metrics.ObjectReference{
 		APIVersion: kind.Group + "/" + kind.Version,
 		Kind:       kind.Kind,
-		Name:       name,
-		Namespace:  namespace,
+		Name:       name.Name,
+		Namespace:  name.Namespace,
 	}, nil
 }
 
 // ListObjectNames uses the given dynamic client to list the names of all objects
 // of the given resource matching the given selector.  Namespace may be empty
 // if the metric is for a root-scoped resource.
-func ListObjectNames(mapper apimeta.RESTMapper, client dynamic.Interface, info provider.CustomMetricInfo, namespace string, selector labels.Selector) ([]string, error) {
+func ListObjectNames(mapper apimeta.RESTMapper, client dynamic.Interface, namespace string, selector labels.Selector, info provider.CustomMetricInfo) ([]string, error) {
 	res, err := ResourceFor(mapper, info)
 	if err != nil {
 		return nil, err
