@@ -13,16 +13,16 @@ This is an example of how to vendor this project and setup your own provider.  T
 
 ## Create the entry point and add the server:
 
-- `mkdir -p cmd`
+- `mkdir -p cmd/server`
 - `touch cmd/main.go`
-- `touch cmd/start.go` 
+- `touch cmd/server/start.go`
 
 > See the [sample server](https://github.com/kubernetes-incubator/custom-metrics-apiserver/blob/master/pkg/sample-cmd/server/start.go) and [sample entry point](https://github.com/kubernetes-incubator/custom-metrics-apiserver/blob/master/sample-main.go) for an example implementation
 
 ## Add and implement [the custom metrics interface](https://github.com/kubernetes-incubator/custom-metrics-apiserver/blob/d8f23423aa1d0ff2bc9656da863d721725b3c68a/pkg/provider/interfaces.go#L84) for your provider:
 
 - `mkdir -p pkg/provider`
-- `touch pkg/provider/provider.go` 
+- `touch pkg/provider/provider.go`
 
 > See the [sample provider](https://github.com/kubernetes-incubator/custom-metrics-apiserver/blob/master/pkg/sample-cmd/provider/provider.go) for complete example
 
