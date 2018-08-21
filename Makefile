@@ -6,11 +6,11 @@ OUT_DIR?=./_output
 
 VERSION?=latest
 
-.PHONY: all build test verify-gofmt gofmt verify sample-container
+.PHONY: all build-sample test verify-gofmt gofmt verify sample-container
 
-all: build
-build: vendor
-	CGO_ENABLED=0 GOARCH=$(ARCH) go build -a -tags netgo -o $(OUT_DIR)/$(ARCH)/sample-adapter github.com/kubernetes-incubator/custom-metrics-apiserver
+all: build-sample
+build-sample: vendor
+	CGO_ENABLED=0 GOARCH=$(ARCH) go build -o $(OUT_DIR)/$(ARCH)/sample-adapter github.com/kubernetes-incubator/custom-metrics-apiserver/sample
 
 vendor: glide.lock
 	glide install -v
@@ -26,7 +26,7 @@ gofmt:
 
 verify: verify-gofmt test
 
-sample-container: build
+sample-container: build-sample
 	cp sample-deploy/Dockerfile $(TEMP_DIR)
 	cp $(OUT_DIR)/$(ARCH)/sample-adapter $(TEMP_DIR)/adapter
 	cd $(TEMP_DIR) && sed -i "s|BASEIMAGE|scratch|g" Dockerfile
