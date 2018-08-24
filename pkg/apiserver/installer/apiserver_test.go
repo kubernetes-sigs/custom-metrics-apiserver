@@ -44,7 +44,7 @@ import (
 	"github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/provider"
 	custommetricstorage "github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/registry/custom_metrics"
 	externalmetricstorage "github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/registry/external_metrics"
-	sampleprovider "github.com/kubernetes-incubator/custom-metrics-apiserver/sample/provider"
+	sampleprovider "github.com/kubernetes-incubator/custom-metrics-apiserver/test-adapter/provider"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 )
 
@@ -341,7 +341,7 @@ func TestExternalMetricsAPI(t *testing.T) {
 
 	// "real" fake provider implementation can be used in test, because it doesn't have any dependencies.
 	// Note: this provider has a hardcoded list of external metrics.
-	prov := sampleprovider.NewFakeProvider(nil, nil)
+	prov, _ := sampleprovider.NewFakeProvider(nil, nil)
 
 	server := httptest.NewServer(handleExternalMetrics(prov))
 	defer server.Close()
