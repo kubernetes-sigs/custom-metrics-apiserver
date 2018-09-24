@@ -51,7 +51,7 @@ spec:
       serviceAccountName: custom-metrics-apiserver
       containers:
       - name: custom-metrics-apiserver
-        image: REGISTRY/k8s-custom-metric-adapter-sample-amd64:latest 
+        image: REGISTRY/k8s-test-metrics-adapter:latest
         args:
         - /adapter
         - --secure-port=6443
