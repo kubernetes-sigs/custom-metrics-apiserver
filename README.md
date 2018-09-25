@@ -6,8 +6,8 @@ This repository contains boilerplate code for setting up an implementation
 of the custom metrics API (https://github.com/kubernetes/metrics).
 
 It includes the necessary boilerplate for setting up an implementation
-(generic API server setup, registration of resources, etc), plus a sample
-implementation backed by fake data.
+(generic API server setup, registration of resources, etc), plus an
+implementation for testing that allows setting metric values over HTTP.
 
 ## How to use this repository
 
@@ -19,8 +19,8 @@ Then, use the `AdapterBase` in `pkg/cmd` to initialize the necessary flags
 and set up the API server, passing in your providers.
 
 More information can be found in the [getting started
-guide](/docs/getting-started.md), and a sample implementation can be found
-in the [sample directory](/sample).
+guide](/docs/getting-started.md), and the testing implementation can be
+found in the [test-adapter directory](/test-adapter).
 
 It is *strongly* suggested that you make use of the dependency versions
 listed in [glide.yaml](/glide.yaml), as mismatched versions of Kubernetes
@@ -35,31 +35,46 @@ dependencies can lead to build issues.
 - [Mercurial](https://www.mercurial-scm.org/downloads) - one of dependencies requires hg
 - [git](https://git-scm.com/downloads)
 
-### Clone and Build boilerplate project
+### Clone and Build the Testing Adapter
 
-There is a sample adapter in this repository that can be used for testing
-changes to the repository, and also acts as an example implementations.
+There is a test adapter in this repository that can be used for testing
+changes to the repository, as a mock implementation of the APIs for
+automated unit tests, and also as an example implementation.
+
+Note that this adapter *should not* be used for production.  It's for
+writing automated e2e tests and serving as a sample only.
 
 To build and deploy it:
 
 ```bash
-# build the sample container as $REGISTRY/k8s-custom-metric-adapter-sample
+# build the test-adapter container as $REGISTRY/k8s-test-metrics-adapter
 export REGISTRY=<some-prefix>
-make sample-container
+make test-adapter-container
 
 # push the container up to a registry (optional if your cluster is local)
-docker push $REGISTRY/k8s-custom-metric-adapter-sample
+docker push $REGISTRY/k8s-test-metrics-adapter
 
-# launch the adapter using the sample deployment files
+# launch the adapter using the test adapter deployment files
 kubectl create namespace custom-metrics
-kubectl apply -f sample-deploy/manifests
+kubectl apply -f test-adapter-deploy/testing-adapter.yaml
 ```
 
-After the deployment you can query the sample adapter with:
+After the deployment you can set new metrics on the adapter using
+query the testing adapter with:
+
+```bash
+# set up a proxy to the api server so we can access write endpoints
+# of the testing adapter directly
+kubectl proxy &
+# write a sample metric -- the write paths match the same URL structure
+# as the read paths, but at the /write-metrics base path.
+curl -XPOST http://localhost:8080/api/v1/namespaces/custom-metrics/services/custom-metrics-apiserver/proxy/write-metrics/namespaces/default/services/kubernetes/test-metric --data-raw '"300m"'
+```
 
 ```
 # you can pipe to `jq .` to pretty-print the output, if it's installed
-kubectl get --raw "/apis/custom.metrics.k8s.io/v1beta1"
+# (otherwise, it's not necessary)
+kubectl get --raw "/apis/custom.metrics.k8s.io/v1beta1" | jq .
 ```
 
 ## Compatibility

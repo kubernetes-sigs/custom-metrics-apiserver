@@ -4,7 +4,9 @@ This will walk through writing a very basic custom metrics API server using
 this library. The implementation will be static.  With a real adapter, you'd
 generally be reading from some external metrics system instead.
 
-The end result will be similar to the [sample adapter](/sample).
+The end result will look similar to the [test adapter](/test-adapter), but
+will generate sample metrics automatically instead of setting them via an
+HTTP endpoint.
 
 ## Prerequisites
 
@@ -38,7 +40,7 @@ Kubernetes objects), and the external metrics API (for metrics that don't
 describe kubernetes objects, or are otherwise not attached to a particular
 object). For the sake of brevity, this walkthrough will show an example of
 the custom metrics API, but a full example including the external metrics
-API can be found in the [sample adapter](/sample).
+API can be found in the [test adapter](/test-adapter).
 
 Put your provider in the `pkg/provider` directory in your repository.
 
@@ -389,5 +391,5 @@ func (a *SampleAdapter) makeProviderOrDie() provider.CustomMetricsProvider {
 
 Now that you have a working adapter, you can build it with `go build`, and
 stick in it a container, and deploy it onto the cluster.  Check out the
-[sample deployment files](/sample-deploy) for an example of how to do
-that.
+[test adapter deployment files](/test-adapter-deploy) for an example of
+how to do that.

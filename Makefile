@@ -1,16 +1,16 @@
 REGISTRY?=kubernetes-incubator
-IMAGE?=k8s-custom-metric-adapter-sample
+IMAGE?=k8s-test-metrics-adapter
 TEMP_DIR:=$(shell mktemp -d)
 ARCH?=amd64
 OUT_DIR?=./_output
 
 VERSION?=latest
 
-.PHONY: all build-sample test verify-gofmt gofmt verify sample-container
+.PHONY: all build-test-adapter test verify-gofmt gofmt verify test-adapter-container
 
-all: build-sample
-build-sample: vendor
-	CGO_ENABLED=0 GOARCH=$(ARCH) go build -o $(OUT_DIR)/$(ARCH)/sample-adapter github.com/kubernetes-incubator/custom-metrics-apiserver/test-adapter
+all: build-test-adapter
+build-test-adapter: vendor
+	CGO_ENABLED=0 GOARCH=$(ARCH) go build -o $(OUT_DIR)/$(ARCH)/test-adapter github.com/kubernetes-incubator/custom-metrics-apiserver/test-adapter
 
 vendor: glide.lock
 	glide install -v
@@ -26,10 +26,10 @@ gofmt:
 
 verify: verify-gofmt test
 
-sample-container: build-sample
-	cp sample-deploy/Dockerfile $(TEMP_DIR)
-	cp $(OUT_DIR)/$(ARCH)/sample-adapter $(TEMP_DIR)/adapter
+test-adapter-container: build-test-adapter
+	cp test-adapter-deploy/Dockerfile $(TEMP_DIR)
+	cp $(OUT_DIR)/$(ARCH)/test-adapter $(TEMP_DIR)/adapter
 	cd $(TEMP_DIR) && sed -i "s|BASEIMAGE|scratch|g" Dockerfile
-	sed -i 's|REGISTRY|'${REGISTRY}'|g' sample-deploy/manifests/custom-metrics-apiserver-deployment.yaml
+	sed -i 's|REGISTRY|'${REGISTRY}'|g' test-adapter-deploy/manifests/custom-metrics-apiserver-deployment.yaml
 	docker build -t $(REGISTRY)/$(IMAGE)-$(ARCH):$(VERSION) $(TEMP_DIR)
 	rm -rf $(TEMP_DIR)
