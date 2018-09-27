@@ -12,7 +12,7 @@ HTTP endpoint.
 
 Make sure you've got a dependency management system that's compatible with
 [glide](https://github.com/Masterminds/glide).  As noted in the
-[README](/README.md), it's *strongly* reccomended that you make use of the
+[README](/README.md), it's *strongly* recommended that you make use of the
 dependency versions listed in this project, otherwise you may encounter
 strange build errors.
 
@@ -119,7 +119,7 @@ func (p *yourProvider) ListAllMetrics() []provider.CustomMetricInfo {
 ```
 
 Next, you'll need to implement the methods that actually fetch the
-metrics. There are methods for fetching metrics describing arbitray Kubernetes
+metrics. There are methods for fetching metrics describing arbitrary Kubernetes
 resources, both root-scoped and namespaced-scoped.  Those metrics can
 either be fetched for a single object, or for a list of objects by
 selector.
@@ -220,7 +220,7 @@ operation, and constructing a result object:
 ```go
 // valueFor fetches a value from the fake list and increments it.
 func (p *yourProvider) valueFor(info provider.CustomMetricInfo) (int64, error) {
-    // normalize the value so that you treat plural resources and singluar
+    // normalize the value so that you treat plural resources and singular
     // resources the same (e.g. pods vs pod)
     info, _, err := info.Normalized(p.mapper)
     if err != nil {
@@ -284,7 +284,7 @@ func (p *yourProvider) GetMetricBySelector(namespace string, selector labels.Sel
     res := make([]custom_metrics.MetricValue, len(names))
     for i, name := range names {
         // in a real adapter, you might want to consider pre-computing the
-        // object reference created in metricFor, intead of recomputing it
+        // object reference created in metricFor, instead of recomputing it
         // for each object.
         value, err := p.metricFor(100*totalValue/int64(len(res)), types.NamespacedName{Namespace: namespace, Name: name}, info)
         if err != nil {
