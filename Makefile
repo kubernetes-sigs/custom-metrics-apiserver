@@ -15,7 +15,7 @@ build-test-adapter: vendor
 vendor: glide.lock
 	glide install -v
 
-test: vendor
+test: 
 	CGO_ENABLED=0 go test ./pkg/...
 
 verify-gofmt:
