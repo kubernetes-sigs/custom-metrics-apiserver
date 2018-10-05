@@ -96,13 +96,18 @@ var (
 	}
 )
 
+type metricValue struct {
+	labels labels.Set
+	value  resource.Quantity
+}
+
 // testingProvider is a sample implementation of provider.MetricsProvider which stores a map of fake metrics
 type testingProvider struct {
 	client dynamic.Interface
 	mapper apimeta.RESTMapper
 
 	valuesLock      sync.RWMutex
-	values          map[CustomMetricResource]resource.Quantity
+	values          map[CustomMetricResource]metricValue
 	externalMetrics []externalMetric
 }
 
@@ -111,7 +116,7 @@ func NewFakeProvider(client dynamic.Interface, mapper apimeta.RESTMapper) (provi
 	provider := &testingProvider{
 		client:          client,
 		mapper:          mapper,
-		values:          make(map[CustomMetricResource]resource.Quantity),
+		values:          make(map[CustomMetricResource]metricValue),
 		externalMetrics: testingExternalMetrics,
 	}
 	return provider, provider.webService()
@@ -163,6 +168,16 @@ func (p *testingProvider) updateMetric(request *restful.Request, response *restf
 
 	groupResource := schema.ParseGroupResource(resourceType)
 
+	metricLabels := labels.Set{}
+	sel := request.QueryParameter("labels")
+	if len(sel) > 0 {
+		metricLabels, err = labels.ConvertSelectorToLabelsMap(sel)
+		if err != nil {
+			response.WriteErrorString(http.StatusBadRequest, err.Error())
+			return
+		}
+	}
+
 	info := provider.CustomMetricInfo{
 		GroupResource: groupResource,
 		Metric:        metricName,
@@ -182,11 +197,14 @@ func (p *testingProvider) updateMetric(request *restful.Request, response *restf
 		CustomMetricInfo: info,
 		NamespacedName:   namespacedName,
 	}
-	p.values[metricInfo] = *value
+	p.values[metricInfo] = metricValue{
+		labels: metricLabels,
+		value:  *value,
+	}
 }
 
 // valueFor is a helper function to get just the value of a specific metric
-func (p *testingProvider) valueFor(info provider.CustomMetricInfo, name types.NamespacedName) (resource.Quantity, error) {
+func (p *testingProvider) valueFor(info provider.CustomMetricInfo, name types.NamespacedName, metricSelector labels.Selector) (resource.Quantity, error) {
 	info, _, err := info.Normalized(p.mapper)
 	if err != nil {
 		return resource.Quantity{}, err
@@ -201,11 +219,15 @@ func (p *testingProvider) valueFor(info provider.CustomMetricInfo, name types.Na
 		return resource.Quantity{}, provider.NewMetricNotFoundForError(info.GroupResource, info.Metric, name.Name)
 	}
 
-	return value, nil
+	if !metricSelector.Matches(value.labels) {
+		return resource.Quantity{}, provider.NewMetricNotFoundForSelectorError(info.GroupResource, info.Metric, name.Name, metricSelector)
+	}
+
+	return value.value, nil
 }
 
 // metricFor is a helper function which formats a value, metric, and object info into a MetricValue which can be returned by the metrics API
-func (p *testingProvider) metricFor(value resource.Quantity, name types.NamespacedName, selector labels.Selector, info provider.CustomMetricInfo) (*custom_metrics.MetricValue, error) {
+func (p *testingProvider) metricFor(value resource.Quantity, name types.NamespacedName, selector labels.Selector, info provider.CustomMetricInfo, metricSelector labels.Selector) (*custom_metrics.MetricValue, error) {
 	objRef, err := helpers.ReferenceFor(p.mapper, name, info)
 	if err != nil {
 		return nil, err
@@ -220,19 +242,19 @@ func (p *testingProvider) metricFor(value resource.Quantity, name types.Namespac
 		Value:     value,
 	}
 
-	if len(selector.String()) > 0 {
-		labelSelector, err := metav1.ParseToLabelSelector(selector.String())
+	if len(metricSelector.String()) > 0 {
+		sel, err := metav1.ParseToLabelSelector(metricSelector.String())
 		if err != nil {
 			return nil, err
 		}
-		metric.Metric.Selector = labelSelector
+		metric.Metric.Selector = sel
 	}
 
 	return metric, nil
 }
 
 // metricsFor is a wrapper used by GetMetricBySelector to format several metrics which match a resource selector
-func (p *testingProvider) metricsFor(namespace string, selector labels.Selector, info provider.CustomMetricInfo) (*custom_metrics.MetricValueList, error) {
+func (p *testingProvider) metricsFor(namespace string, selector labels.Selector, info provider.CustomMetricInfo, metricSelector labels.Selector) (*custom_metrics.MetricValueList, error) {
 	names, err := helpers.ListObjectNames(p.mapper, p.client, namespace, selector, info)
 	if err != nil {
 		return nil, err
@@ -241,7 +263,7 @@ func (p *testingProvider) metricsFor(namespace string, selector labels.Selector,
 	res := make([]custom_metrics.MetricValue, 0, len(names))
 	for _, name := range names {
 		namespacedName := types.NamespacedName{Name: name, Namespace: namespace}
-		value, err := p.valueFor(info, namespacedName)
+		value, err := p.valueFor(info, namespacedName, metricSelector)
 		if err != nil {
 			if apierr.IsNotFound(err) {
 				continue
@@ -249,7 +271,7 @@ func (p *testingProvider) metricsFor(namespace string, selector labels.Selector,
 			return nil, err
 		}
 
-		metric, err := p.metricFor(value, namespacedName, selector, info)
+		metric, err := p.metricFor(value, namespacedName, selector, info, metricSelector)
 		if err != nil {
 			return nil, err
 		}
@@ -261,22 +283,22 @@ func (p *testingProvider) metricsFor(namespace string, selector labels.Selector,
 	}, nil
 }
 
-func (p *testingProvider) GetMetricByName(name types.NamespacedName, info provider.CustomMetricInfo) (*custom_metrics.MetricValue, error) {
+func (p *testingProvider) GetMetricByName(name types.NamespacedName, info provider.CustomMetricInfo, metricSelector labels.Selector) (*custom_metrics.MetricValue, error) {
 	p.valuesLock.RLock()
 	defer p.valuesLock.RUnlock()
 
-	value, err := p.valueFor(info, name)
+	value, err := p.valueFor(info, name, metricSelector)
 	if err != nil {
 		return nil, err
 	}
-	return p.metricFor(value, name, labels.Everything(), info)
+	return p.metricFor(value, name, labels.Everything(), info, metricSelector)
 }
 
-func (p *testingProvider) GetMetricBySelector(namespace string, selector labels.Selector, info provider.CustomMetricInfo) (*custom_metrics.MetricValueList, error) {
+func (p *testingProvider) GetMetricBySelector(namespace string, selector labels.Selector, info provider.CustomMetricInfo, metricSelector labels.Selector) (*custom_metrics.MetricValueList, error) {
 	p.valuesLock.RLock()
 	defer p.valuesLock.RUnlock()
 
-	return p.metricsFor(namespace, selector, info)
+	return p.metricsFor(namespace, selector, info, metricSelector)
 }
 
 func (p *testingProvider) ListAllMetrics() []provider.CustomMetricInfo {
