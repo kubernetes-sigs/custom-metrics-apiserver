@@ -1,5 +1,5 @@
-hash: 7abe959d10d6e0f3642bda9ea8c380d882933c0c9645dd13955253faf9b1118b
-updated: 2018-08-25T22:25:14.99784445Z
+hash: 4fc72aae29e8ae56909310188de0ca373e84b989a7a5c1a6249d57bb1038f1d2
+updated: 2018-10-03T16:48:49.833114607-04:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -283,7 +283,7 @@ imports:
 - name: gopkg.in/yaml.v2
   version: 670d4cfef0544295bc27a114dbac37980d83185a
 - name: k8s.io/api
-  version: 00c78f6603af046dfcada47ba511ddc94e7a64ce
+  version: 4e7be11eab3ffcfc1876898b8272df53785a9504
   subpackages:
   - admission/v1beta1
   - admissionregistration/v1alpha1
@@ -316,7 +316,7 @@ imports:
   - storage/v1alpha1
   - storage/v1beta1
 - name: k8s.io/apimachinery
-  version: 1c56055d3f2ff0ae5ff61d86dc8c88d2928b7ab3
+  version: def12e63c512da17043b4f0293f52d1006603d9f
   subpackages:
   - pkg/api/equality
   - pkg/api/errors
@@ -367,7 +367,7 @@ imports:
   - third_party/forked/golang/json
   - third_party/forked/golang/reflect
 - name: k8s.io/apiserver
-  version: 15cbd7efdeb242a93307546b08843d55dcfddc33
+  version: d296c96c12b7d15d7fb5fea7a05fb165f8fd4014
   subpackages:
   - pkg/admission
   - pkg/admission/configuration
@@ -439,6 +439,7 @@ imports:
   - pkg/storage/etcd/metrics
   - pkg/storage/etcd/util
   - pkg/storage/etcd3
+  - pkg/storage/etcd3/preflight
   - pkg/storage/names
   - pkg/storage/storagebackend
   - pkg/storage/storagebackend/factory
@@ -458,7 +459,7 @@ imports:
   - plugin/pkg/authenticator/token/webhook
   - plugin/pkg/authorizer/webhook
 - name: k8s.io/client-go
-  version: 615dfd3eb0c3d083e20c404dea7dfc63bd032ee1
+  version: f2f85107cac6fe04c30435ca0ac0c3318fd1b94c
   subpackages:
   - discovery
   - dynamic
@@ -597,7 +598,7 @@ imports:
   - pkg/util
   - pkg/util/proto
 - name: k8s.io/metrics
-  version: baa04983db4e01d02a16d9c9fe32dd5b478b3248
+  version: 972ef826b8401c180b89cefc7457daa2d116daa9
   subpackages:
   - pkg/apis/custom_metrics
   - pkg/apis/custom_metrics/install

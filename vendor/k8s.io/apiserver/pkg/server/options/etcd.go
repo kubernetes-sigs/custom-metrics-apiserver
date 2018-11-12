@@ -32,8 +32,8 @@ import (
 	"k8s.io/apiserver/pkg/server"
 	"k8s.io/apiserver/pkg/server/healthz"
 	serverstorage "k8s.io/apiserver/pkg/server/storage"
+	"k8s.io/apiserver/pkg/storage/etcd3/preflight"
 	"k8s.io/apiserver/pkg/storage/storagebackend"
-	storagefactory "k8s.io/apiserver/pkg/storage/storagebackend/factory"
 )
 
 type EtcdOptions struct {
@@ -181,30 +181,29 @@ func (s *EtcdOptions) ApplyTo(c *server.Config) error {
 	if s == nil {
 		return nil
 	}
-	if err := s.addEtcdHealthEndpoint(c); err != nil {
-		return err
-	}
+
+	s.addEtcdHealthEndpoint(c)
 	c.RESTOptionsGetter = &SimpleRestOptionsFactory{Options: *s}
 	return nil
 }
 
 func (s *EtcdOptions) ApplyWithStorageFactoryTo(factory serverstorage.StorageFactory, c *server.Config) error {
-	if err := s.addEtcdHealthEndpoint(c); err != nil {
-		return err
-	}
+	s.addEtcdHealthEndpoint(c)
 	c.RESTOptionsGetter = &storageFactoryRestOptionsFactory{Options: *s, StorageFactory: factory}
 	return nil
 }
 
-func (s *EtcdOptions) addEtcdHealthEndpoint(c *server.Config) error {
-	healthCheck, err := storagefactory.CreateHealthCheck(s.StorageConfig)
-	if err != nil {
-		return err
-	}
+func (s *EtcdOptions) addEtcdHealthEndpoint(c *server.Config) {
 	c.HealthzChecks = append(c.HealthzChecks, healthz.NamedCheck("etcd", func(r *http.Request) error {
-		return healthCheck()
+		done, err := preflight.EtcdConnection{ServerList: s.StorageConfig.ServerList}.CheckEtcdServers()
+		if !done {
+			return fmt.Errorf("etcd failed")
+		}
+		if err != nil {
+			return err
+		}
+		return nil
 	}))
-	return nil
 }
 
 type SimpleRestOptionsFactory struct {
