@@ -55,7 +55,6 @@ make test-adapter-container
 docker push $REGISTRY/k8s-test-metrics-adapter
 
 # launch the adapter using the test adapter deployment files
-kubectl create namespace custom-metrics
 kubectl apply -f test-adapter-deploy/testing-adapter.yaml
 ```
 
@@ -68,7 +67,7 @@ query the testing adapter with:
 kubectl proxy &
 # write a sample metric -- the write paths match the same URL structure
 # as the read paths, but at the /write-metrics base path.
-curl -XPOST http://localhost:8080/api/v1/namespaces/custom-metrics/services/custom-metrics-apiserver/proxy/write-metrics/namespaces/default/services/kubernetes/test-metric --data-raw '"300m"'
+curl -XPOST http://localhost:8080/api/v1/namespaces/custom-metrics/services/custom-metrics-apiserver:http/proxy/write-metrics/namespaces/default/services/kubernetes/test-metric --data-raw '"300m"'
 ```
 
 ```
