@@ -205,18 +205,30 @@ func (p *testingProvider) valueFor(info provider.CustomMetricInfo, name types.Na
 }
 
 // metricFor is a helper function which formats a value, metric, and object info into a MetricValue which can be returned by the metrics API
-func (p *testingProvider) metricFor(value resource.Quantity, name types.NamespacedName, info provider.CustomMetricInfo) (*custom_metrics.MetricValue, error) {
+func (p *testingProvider) metricFor(value resource.Quantity, name types.NamespacedName, selector labels.Selector, info provider.CustomMetricInfo) (*custom_metrics.MetricValue, error) {
 	objRef, err := helpers.ReferenceFor(p.mapper, name, info)
 	if err != nil {
 		return nil, err
 	}
 
-	return &custom_metrics.MetricValue{
+	metric := &custom_metrics.MetricValue{
 		DescribedObject: objRef,
-		MetricName:      info.Metric,
-		Timestamp:       metav1.Time{time.Now()},
-		Value:           value,
-	}, nil
+		Metric: custom_metrics.MetricIdentifier{
+			Name: info.Metric,
+		},
+		Timestamp: metav1.Time{time.Now()},
+		Value:     value,
+	}
+
+	if len(selector.String()) > 0 {
+		labelSelector, err := metav1.ParseToLabelSelector(selector.String())
+		if err != nil {
+			return nil, err
+		}
+		metric.Metric.Selector = labelSelector
+	}
+
+	return metric, nil
 }
 
 // metricsFor is a wrapper used by GetMetricBySelector to format several metrics which match a resource selector
@@ -237,7 +249,7 @@ func (p *testingProvider) metricsFor(namespace string, selector labels.Selector,
 			return nil, err
 		}
 
-		metric, err := p.metricFor(value, namespacedName, info)
+		metric, err := p.metricFor(value, namespacedName, selector, info)
 		if err != nil {
 			return nil, err
 		}
@@ -257,7 +269,7 @@ func (p *testingProvider) GetMetricByName(name types.NamespacedName, info provid
 	if err != nil {
 		return nil, err
 	}
-	return p.metricFor(value, name, info)
+	return p.metricFor(value, name, labels.Everything(), info)
 }
 
 func (p *testingProvider) GetMetricBySelector(namespace string, selector labels.Selector, info provider.CustomMetricInfo) (*custom_metrics.MetricValueList, error) {
