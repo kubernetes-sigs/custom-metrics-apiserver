@@ -20,7 +20,9 @@ import (
 	"context"
 	"fmt"
 
+	cm_rest "github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/apiserver/registry/rest"
 	"github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/provider"
+
 	metainternalversion "k8s.io/apimachinery/pkg/apis/meta/internalversion"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -37,7 +39,7 @@ type REST struct {
 }
 
 var _ rest.Storage = &REST{}
-var _ rest.ListerWithOptions = &REST{}
+var _ cm_rest.ListerWithOptions = &REST{}
 
 func NewREST(cmProvider provider.CustomMetricsProvider) *REST {
 	return &REST{

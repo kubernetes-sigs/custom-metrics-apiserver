@@ -24,9 +24,9 @@ import (
 	"k8s.io/apiserver/pkg/endpoints/handlers"
 	"k8s.io/apiserver/pkg/endpoints/handlers/negotiation"
 	"k8s.io/apiserver/pkg/endpoints/metrics"
-	"k8s.io/apiserver/pkg/registry/rest"
 
 	"github.com/emicklei/go-restful"
+	"github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/apiserver/registry/rest"
 )
 
 type CMHandlers struct{}
