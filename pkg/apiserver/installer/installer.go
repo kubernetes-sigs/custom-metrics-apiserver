@@ -289,8 +289,8 @@ func restfulListResource(r rest.Lister, rw rest.Watcher, scope handlers.RequestS
 	}
 }
 
-func restfulListResourceWithOptions(r cm_rest.ListerWithOptions, rw rest.Watcher, scope handlers.RequestScope, forceWatch bool, minRequestTimeout time.Duration) restful.RouteFunction {
+func restfulListResourceWithOptions(r cm_rest.ListerWithOptions, scope handlers.RequestScope) restful.RouteFunction {
 	return func(req *restful.Request, res *restful.Response) {
-		cm_handlers.ListResourceWithOptions(r, rw, scope, forceWatch, minRequestTimeout)(res.ResponseWriter, req.Request)
+		cm_handlers.ListResourceWithOptions(r, scope)(res.ResponseWriter, req.Request)
 	}
 }

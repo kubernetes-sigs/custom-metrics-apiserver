@@ -149,7 +149,7 @@ func (ch *CMHandlers) registerResourceHandlers(a *MetricsAPIInstaller, ws *restf
 		reqScope.Subresource,
 		"cluster",
 		"custom-metrics",
-		restfulListResourceWithOptions(lister, nil, reqScope, false, a.minRequestTimeout),
+		restfulListResourceWithOptions(lister, reqScope),
 	)
 
 	// install the root-scoped route
@@ -185,7 +185,7 @@ func (ch *CMHandlers) registerResourceHandlers(a *MetricsAPIInstaller, ws *restf
 		reqScope.Subresource,
 		"resource",
 		"custom-metrics",
-		restfulListResourceWithOptions(lister, nil, reqScope, false, a.minRequestTimeout),
+		restfulListResourceWithOptions(lister, reqScope),
 	)
 
 	namespacedRoute := ws.GET(namespacedPath).To(namespacedHandler).
@@ -221,7 +221,7 @@ func (ch *CMHandlers) registerResourceHandlers(a *MetricsAPIInstaller, ws *restf
 		reqScope.Subresource,
 		"resource",
 		"custom-metrics",
-		restfulListResourceWithOptions(lister, nil, reqScope, false, a.minRequestTimeout),
+		restfulListResourceWithOptions(lister, reqScope),
 	)
 
 	namespaceSpecificRoute := ws.GET(namespaceSpecificPath).To(namespaceSpecificHandler).

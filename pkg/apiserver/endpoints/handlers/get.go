@@ -17,15 +17,11 @@ limitations under the License.
 package handlers
 
 import (
-	"context"
 	"fmt"
-	"math/rand"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
-
-	"github.com/golang/glog"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -33,65 +29,14 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apiserver/pkg/endpoints/handlers"
-	"k8s.io/apiserver/pkg/endpoints/metrics"
+	"k8s.io/apiserver/pkg/endpoints/handlers/responsewriters"
 	"k8s.io/apiserver/pkg/endpoints/request"
-	"k8s.io/apiserver/pkg/registry/rest"
 	utiltrace "k8s.io/utils/trace"
 
 	cm_rest "github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/apiserver/registry/rest"
 )
 
-func ListResourceWithOptions(r cm_rest.ListerWithOptions, rw rest.Watcher, scope handlers.RequestScope, forceWatch bool, minRequestTimeout time.Duration) http.HandlerFunc {
-	list := func(w http.ResponseWriter, req *http.Request, ctx context.Context, opts *metainternalversion.ListOptions) (runtime.Object, error) {
-		extraOpts, subpath, subpathKey := r.NewListOptions()
-		if err := getRequestOptions(req, scope, extraOpts, subpath, subpathKey, false); err != nil {
-			err = errors.NewBadRequest(err.Error())
-			return nil, err
-		}
-		return r.List(ctx, opts, extraOpts)
-	}
-	return listResource(list, rw, scope, forceWatch, minRequestTimeout)
-}
-
-// getRequestOptions parses out options and can include path information.  The path information shouldn't include the subresource.
-func getRequestOptions(req *http.Request, scope handlers.RequestScope, into runtime.Object, subpath bool, subpathKey string, isSubresource bool) error {
-	if into == nil {
-		return nil
-	}
-
-	query := req.URL.Query()
-	if subpath {
-		newQuery := make(url.Values)
-		for k, v := range query {
-			newQuery[k] = v
-		}
-
-		ctx := req.Context()
-		requestInfo, _ := request.RequestInfoFrom(ctx)
-		startingIndex := 2
-		if isSubresource {
-			startingIndex = 3
-		}
-
-		p := strings.Join(requestInfo.Parts[startingIndex:], "/")
-
-		// ensure non-empty subpaths correctly reflect a leading slash
-		if len(p) > 0 && !strings.HasPrefix(p, "/") {
-			p = "/" + p
-		}
-
-		// ensure subpaths correctly reflect the presence of a trailing slash on the original request
-		if strings.HasSuffix(requestInfo.Path, "/") && !strings.HasSuffix(p, "/") {
-			p += "/"
-		}
-
-		newQuery[subpathKey] = []string{p}
-		query = newQuery
-	}
-	return scope.ParameterCodec.DecodeParameters(query, scope.Kind.GroupVersion(), into)
-}
-
-func listResource(list func(http.ResponseWriter, *http.Request, context.Context, *metainternalversion.ListOptions) (runtime.Object, error), rw rest.Watcher, scope handlers.RequestScope, forceWatch bool, minRequestTimeout time.Duration) http.HandlerFunc {
+func ListResourceWithOptions(r cm_rest.ListerWithOptions, scope handlers.RequestScope) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		// For performance tracking purposes.
 		trace := utiltrace.New("List " + req.URL.Path)
@@ -157,37 +102,16 @@ func listResource(list func(http.ResponseWriter, *http.Request, context.Context,
 			}
 		}
 
-		if opts.Watch || forceWatch {
-			if rw == nil {
-				writeError(&scope, errors.NewMethodNotSupported(scope.Resource.GroupResource(), "watch"), w, req)
-				return
-			}
-			// TODO: Currently we explicitly ignore ?timeout= and use only ?timeoutSeconds=.
-			timeout := time.Duration(0)
-			if opts.TimeoutSeconds != nil {
-				timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
-			}
-			if timeout == 0 && minRequestTimeout > 0 {
-				timeout = time.Duration(float64(minRequestTimeout) * (rand.Float64() + 1.0))
-			}
-			glog.V(3).Infof("Starting watch for %s, rv=%s labels=%s fields=%s timeout=%s", req.URL.Path, opts.ResourceVersion, opts.LabelSelector, opts.FieldSelector, timeout)
-
-			watcher, err := rw.Watch(ctx, &opts)
-			if err != nil {
-				writeError(&scope, err, w, req)
-				return
-			}
-			requestInfo, _ := request.RequestInfoFrom(ctx)
-			metrics.RecordLongRunning(req, requestInfo, func() {
-				serveWatch(watcher, scope, req, w, timeout)
-			})
-			return
-		}
-
 		// Log only long List requests (ignore Watch).
 		defer trace.LogIfLong(500 * time.Millisecond)
 		trace.Step("About to List from storage")
-		result, err := list(w, req, ctx, &opts)
+		extraOpts, hasSubpath, subpathKey := r.NewListOptions()
+		if err := getRequestOptions(req, scope, extraOpts, hasSubpath, subpathKey, false); err != nil {
+			err = errors.NewBadRequest(err.Error())
+			writeError(&scope, err, w, req)
+			return
+		}
+		result, err := r.List(ctx, &opts, extraOpts)
 		if err != nil {
 			writeError(&scope, err, w, req)
 			return
@@ -207,7 +131,45 @@ func listResource(list func(http.ResponseWriter, *http.Request, context.Context,
 			}
 		}
 
-		transformResponseObject(ctx, scope, req, w, http.StatusOK, result)
+		responsewriters.WriteObject(http.StatusOK, scope.Kind.GroupVersion(), scope.Serializer, result, w, req)
 		trace.Step(fmt.Sprintf("Writing http response done (%d items)", numberOfItems))
 	}
+}
+
+// getRequestOptions parses out options and can include path information.  The path information shouldn't include the subresource.
+func getRequestOptions(req *http.Request, scope handlers.RequestScope, into runtime.Object, hasSubpath bool, subpathKey string, isSubresource bool) error {
+	if into == nil {
+		return nil
+	}
+
+	query := req.URL.Query()
+	if hasSubpath {
+		newQuery := make(url.Values)
+		for k, v := range query {
+			newQuery[k] = v
+		}
+
+		ctx := req.Context()
+		requestInfo, _ := request.RequestInfoFrom(ctx)
+		startingIndex := 2
+		if isSubresource {
+			startingIndex = 3
+		}
+
+		p := strings.Join(requestInfo.Parts[startingIndex:], "/")
+
+		// ensure non-empty subpaths correctly reflect a leading slash
+		if len(p) > 0 && !strings.HasPrefix(p, "/") {
+			p = "/" + p
+		}
+
+		// ensure subpaths correctly reflect the presence of a trailing slash on the original request
+		if strings.HasSuffix(requestInfo.Path, "/") && !strings.HasSuffix(p, "/") {
+			p += "/"
+		}
+
+		newQuery[subpathKey] = []string{p}
+		query = newQuery
+	}
+	return scope.ParameterCodec.DecodeParameters(query, scope.Kind.GroupVersion(), into)
 }
