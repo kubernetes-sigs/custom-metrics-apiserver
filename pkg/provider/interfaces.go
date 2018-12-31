@@ -98,7 +98,7 @@ type CustomMetricsProvider interface {
 }
 
 // ExternalMetricsProvider is a source of external metrics.
-// Metric is normally idendified by a name and a set of labels/tags. It is up to a specific
+// Metric is normally identified by a name and a set of labels/tags. It is up to a specific
 // implementation how to translate metricSelector to a filter for metric values.
 // Namespace can be used by the implemetation for metric identification, access control or ignored.
 type ExternalMetricsProvider interface {
