@@ -67,7 +67,8 @@ query the testing adapter with:
 kubectl proxy &
 # write a sample metric -- the write paths match the same URL structure
 # as the read paths, but at the /write-metrics base path.
-curl -XPOST http://localhost:8080/api/v1/namespaces/custom-metrics/services/custom-metrics-apiserver:http/proxy/write-metrics/namespaces/default/services/kubernetes/test-metric --data-raw '"300m"'
+# data needs to be in json, so we also need to set the content-type header
+curl -XPOST -H 'Content-Type: application/json' http://localhost:8080/api/v1/namespaces/custom-metrics/services/custom-metrics-apiserver:http/proxy/write-metrics/namespaces/default/services/kubernetes/test-metric --data-raw '"300m"'
 ```
 
 ```
