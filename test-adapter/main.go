@@ -22,9 +22,9 @@ import (
 	"os"
 
 	"github.com/emicklei/go-restful"
-	"github.com/golang/glog"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/util/logs"
+	"k8s.io/klog"
 
 	basecmd "github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/cmd"
 	"github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/provider"
@@ -41,12 +41,12 @@ type SampleAdapter struct {
 func (a *SampleAdapter) makeProviderOrDie() (provider.MetricsProvider, *restful.WebService) {
 	client, err := a.DynamicClient()
 	if err != nil {
-		glog.Fatalf("unable to construct dynamic client: %v", err)
+		klog.Fatalf("unable to construct dynamic client: %v", err)
 	}
 
 	mapper, err := a.RESTMapper()
 	if err != nil {
-		glog.Fatalf("unable to construct discovery REST mapper: %v", err)
+		klog.Fatalf("unable to construct discovery REST mapper: %v", err)
 	}
 
 	return fakeprov.NewFakeProvider(client, mapper)
@@ -65,14 +65,14 @@ func main() {
 	cmd.WithCustomMetrics(testProvider)
 	cmd.WithExternalMetrics(testProvider)
 
-	glog.Infof(cmd.Message)
+	klog.Infof(cmd.Message)
 	// Set up POST endpoint for writing fake metric values
 	restful.DefaultContainer.Add(webService)
 	go func() {
 		// Open port for POSTing fake metrics
-		glog.Fatal(http.ListenAndServe(":8080", nil))
+		klog.Fatal(http.ListenAndServe(":8080", nil))
 	}()
 	if err := cmd.Run(wait.NeverStop); err != nil {
-		glog.Fatalf("unable to run custom metrics adapter: %v", err)
+		klog.Fatalf("unable to run custom metrics adapter: %v", err)
 	}
 }
