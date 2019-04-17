@@ -319,7 +319,7 @@ import (
 
     "github.com/golang/glog"
     "k8s.io/apimachinery/pkg/util/wait"
-    "k8s.io/apiserver/pkg/util/logs"
+    "k8s.io/component-base/logs"
 
     basecmd "github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/cmd"
     "github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/provider"
