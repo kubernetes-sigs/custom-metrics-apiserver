@@ -9,9 +9,6 @@ import:
 - package: github.com/go-openapi/spec
   version: 1de3e0542de65ad8d75452a595886fdd0befb363  # from kubernetes Godeps.json
 
-- package: github.com/golang/glog
-  version: 44145f04b68cf362d9c4df2182967c2275eaefed  # from kubernetes Godep.json
-
 - package: github.com/spf13/cobra
   version: c439c4fa093711d42e1b01acb1235b52004753c1  # from kubernetes Godeps.json
 

@@ -55,7 +55,7 @@ import (
     "fmt"
     "time"
 
-    "github.com/golang/glog"
+    "k8s.io/klog"
     apierr "k8s.io/apimachinery/pkg/api/errors"
     apimeta "k8s.io/apimachinery/pkg/api/meta"
     "k8s.io/apimachinery/pkg/api/resource"
@@ -317,7 +317,7 @@ import (
     "flag"
     "os"
 
-    "github.com/golang/glog"
+    "github.com/golang/klog"
     "k8s.io/apimachinery/pkg/util/wait"
     "k8s.io/component-base/logs"
 
@@ -349,7 +349,7 @@ func main() {
     // initialize the flags, with one custom flag for the message
     cmd := &YourAdapter{}
     cmd.Flags().StringVar(&cmd.Message, "msg", "starting adapter...", "startup message")
-    cmd.Flags().AddGoFlagSet(flag.CommandLine) // make sure you get the glog flags
+    cmd.Flags().AddGoFlagSet(flag.CommandLine) // make sure you get the klog flags
     cmd.Flags().Parse(os.Args)
 
     provider := cmd.makeProviderOrDie()
@@ -358,9 +358,9 @@ func main() {
     // if your provider supported it:
     // cmd.WithExternalMetrics(provider)
 
-    glog.Infof(cmd.Message)
+    klog.Infof(cmd.Message)
     if err := cmd.Run(wait.NeverStop); err != nil {
-        glog.Fatalf("unable to run custom metrics adapter: %v", err)
+        klog.Fatalf("unable to run custom metrics adapter: %v", err)
     }
 }
 ```
@@ -375,12 +375,12 @@ you wrote above, the setup code looks something like this:
 func (a *SampleAdapter) makeProviderOrDie() provider.CustomMetricsProvider {
     client, err := a.DynamicClient()
     if err != nil {
-        glog.Fatalf("unable to construct dynamic client: %v", err)
+        klog.Fatalf("unable to construct dynamic client: %v", err)
     }
 
     mapper, err := a.RESTMapper()
     if err != nil {
-        glog.Fatalf("unable to construct discovery REST mapper: %v", err)
+        klog.Fatalf("unable to construct discovery REST mapper: %v", err)
     }
 
     return yourprov.NewProvider(client, mapper)
