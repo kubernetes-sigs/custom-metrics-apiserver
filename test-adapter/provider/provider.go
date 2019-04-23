@@ -22,7 +22,7 @@ import (
 	"time"
 
 	"github.com/emicklei/go-restful"
-	"github.com/golang/glog"
+	"k8s.io/klog"
 
 	apierr "k8s.io/apimachinery/pkg/api/errors"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
@@ -171,7 +171,7 @@ func (p *testingProvider) updateMetric(request *restful.Request, response *restf
 
 	info, _, err = info.Normalized(p.mapper)
 	if err != nil {
-		glog.Errorf("Error normalizing info: %s", err)
+		klog.Errorf("Error normalizing info: %s", err)
 	}
 	namespacedName := types.NamespacedName{
 		Name:      name,

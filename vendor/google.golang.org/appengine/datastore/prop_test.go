@@ -6,7 +6,6 @@ package datastore
 
 import (
 	"reflect"
-	"sort"
 	"testing"
 	"time"
 
@@ -81,36 +80,58 @@ func TestStructCodec(t *testing.T) {
 		V string `datastore:",noindex"`
 	}
 	oStructCodec := &structCodec{
-		fields: map[string]fieldCodec{
-			"O": {path: []int{0}},
+		byIndex: []structTag{
+			{name: "O"},
+		},
+		byName: map[string]fieldCodec{
+			"O": {index: 0},
 		},
 		complete: true,
 	}
 	pStructCodec := &structCodec{
-		fields: map[string]fieldCodec{
-			"P": {path: []int{0}},
-			"Q": {path: []int{1}},
+		byIndex: []structTag{
+			{name: "P"},
+			{name: "Q"},
+		},
+		byName: map[string]fieldCodec{
+			"P": {index: 0},
+			"Q": {index: 1},
 		},
 		complete: true,
 	}
 	rStructCodec := &structCodec{
-		fields: map[string]fieldCodec{
-			"R": {path: []int{0}},
-			"S": {path: []int{1}, structCodec: pStructCodec},
-			"T": {path: []int{2}, structCodec: oStructCodec},
-			"O": {path: []int{3, 0}},
+		byIndex: []structTag{
+			{name: "R"},
+			{name: "S."},
+			{name: "T."},
+			{name: ""},
+		},
+		byName: map[string]fieldCodec{
+			"R":   {index: 0},
+			"S.P": {index: 1, substructCodec: pStructCodec},
+			"S.Q": {index: 1, substructCodec: pStructCodec},
+			"T.O": {index: 2, substructCodec: oStructCodec},
+			"O":   {index: 3, substructCodec: oStructCodec},
 		},
 		complete: true,
 	}
 	uStructCodec := &structCodec{
-		fields: map[string]fieldCodec{
-			"U": {path: []int{0}},
+		byIndex: []structTag{
+			{name: "U"},
+			{name: "v"},
+		},
+		byName: map[string]fieldCodec{
+			"U": {index: 0},
+			"v": {index: 1},
 		},
 		complete: true,
 	}
 	vStructCodec := &structCodec{
-		fields: map[string]fieldCodec{
-			"V": {path: []int{0}, noIndex: true},
+		byIndex: []structTag{
+			{name: "V", noIndex: true},
+		},
+		byName: map[string]fieldCodec{
+			"V": {index: 0},
 		},
 		complete: true,
 	}
@@ -148,10 +169,15 @@ func TestStructCodec(t *testing.T) {
 				T time.Time
 			}{},
 			&structCodec{
-				fields: map[string]fieldCodec{
-					"B": {path: []int{0}},
-					"K": {path: []int{1}},
-					"T": {path: []int{2}},
+				byIndex: []structTag{
+					{name: "B"},
+					{name: "K"},
+					{name: "T"},
+				},
+				byName: map[string]fieldCodec{
+					"B": {index: 0},
+					"K": {index: 1},
+					"T": {index: 2},
 				},
 				complete: true,
 			},
@@ -169,13 +195,23 @@ func TestStructCodec(t *testing.T) {
 				oStruct `datastore:"-"`
 			}{},
 			&structCodec{
-				fields: map[string]fieldCodec{
-					"a": {path: []int{0}, noIndex: true},
-					"b": {path: []int{1}},
-					"C": {path: []int{2}, noIndex: true},
-					"D": {path: []int{3}},
-					"E": {path: []int{4}},
-					"J": {path: []int{6}, noIndex: true},
+				byIndex: []structTag{
+					{name: "a", noIndex: true},
+					{name: "b", noIndex: false},
+					{name: "C", noIndex: true},
+					{name: "D", noIndex: false},
+					{name: "E", noIndex: false},
+					{name: "-", noIndex: false},
+					{name: "J", noIndex: true},
+					{name: "-", noIndex: false},
+				},
+				byName: map[string]fieldCodec{
+					"a": {index: 0},
+					"b": {index: 1},
+					"C": {index: 2},
+					"D": {index: 3},
+					"E": {index: 4},
+					"J": {index: 6},
 				},
 				complete: true,
 			},
@@ -189,9 +225,17 @@ func TestStructCodec(t *testing.T) {
 				d int `datastore:"Y"`
 			}{},
 			&structCodec{
-				fields: map[string]fieldCodec{
-					"A": {path: []int{0}},
-					"x": {path: []int{2}},
+				byIndex: []structTag{
+					{name: "A"},
+					{name: "b"},
+					{name: "x"},
+					{name: "Y"},
+				},
+				byName: map[string]fieldCodec{
+					"A": {index: 0},
+					"b": {index: 1},
+					"x": {index: 2},
+					"Y": {index: 3},
 				},
 				complete: true,
 			},
@@ -206,12 +250,23 @@ func TestStructCodec(t *testing.T) {
 				oStruct
 			}{},
 			&structCodec{
-				fields: map[string]fieldCodec{
-					"A":   {path: []int{0}},
-					"B":   {path: []int{1}},
-					"CC":  {path: []int{2}, structCodec: oStructCodec},
-					"DDD": {path: []int{3}, structCodec: rStructCodec},
-					"O":   {path: []int{4, 0}},
+				byIndex: []structTag{
+					{name: "A"},
+					{name: "B"},
+					{name: "CC."},
+					{name: "DDD."},
+					{name: ""},
+				},
+				byName: map[string]fieldCodec{
+					"A":       {index: 0},
+					"B":       {index: 1},
+					"CC.O":    {index: 2, substructCodec: oStructCodec},
+					"DDD.R":   {index: 3, substructCodec: rStructCodec},
+					"DDD.S.P": {index: 3, substructCodec: rStructCodec},
+					"DDD.S.Q": {index: 3, substructCodec: rStructCodec},
+					"DDD.T.O": {index: 3, substructCodec: rStructCodec},
+					"DDD.O":   {index: 3, substructCodec: rStructCodec},
+					"O":       {index: 4, substructCodec: oStructCodec},
 				},
 				complete: true,
 			},
@@ -226,11 +281,22 @@ func TestStructCodec(t *testing.T) {
 				oStruct `datastore:"z"`
 			}{},
 			&structCodec{
-				fields: map[string]fieldCodec{
-					"w":   {path: []int{1}},
-					"xx":  {path: []int{2}, structCodec: oStructCodec},
-					"y":   {path: []int{3}, structCodec: rStructCodec},
-					"z.O": {path: []int{4, 0}},
+				byIndex: []structTag{
+					{name: "-"},
+					{name: "w"},
+					{name: "xx."},
+					{name: "y."},
+					{name: "z."},
+				},
+				byName: map[string]fieldCodec{
+					"w":     {index: 1},
+					"xx.O":  {index: 2, substructCodec: oStructCodec},
+					"y.R":   {index: 3, substructCodec: rStructCodec},
+					"y.S.P": {index: 3, substructCodec: rStructCodec},
+					"y.S.Q": {index: 3, substructCodec: rStructCodec},
+					"y.T.O": {index: 3, substructCodec: rStructCodec},
+					"y.O":   {index: 3, substructCodec: rStructCodec},
+					"z.O":   {index: 4, substructCodec: oStructCodec},
 				},
 				complete: true,
 			},
@@ -245,10 +311,22 @@ func TestStructCodec(t *testing.T) {
 				uStruct
 			}{},
 			&structCodec{
-				fields: map[string]fieldCodec{
-					"B": {path: []int{1}},
-					"D": {path: []int{3}, structCodec: uStructCodec},
-					"U": {path: []int{4, 0}},
+				byIndex: []structTag{
+					{name: "a"},
+					{name: "B"},
+					{name: "c."},
+					{name: "D."},
+					{name: ""},
+				},
+				byName: map[string]fieldCodec{
+					"a":   {index: 0},
+					"B":   {index: 1},
+					"c.U": {index: 2, substructCodec: uStructCodec},
+					"c.v": {index: 2, substructCodec: uStructCodec},
+					"D.U": {index: 3, substructCodec: uStructCodec},
+					"D.v": {index: 3, substructCodec: uStructCodec},
+					"U":   {index: 4, substructCodec: uStructCodec},
+					"v":   {index: 4, substructCodec: uStructCodec},
 				},
 				complete: true,
 			},
@@ -259,8 +337,11 @@ func TestStructCodec(t *testing.T) {
 				A oStruct `datastore:",noindex"`
 			}{},
 			&structCodec{
-				fields: map[string]fieldCodec{
-					"A": {path: []int{0}, structCodec: oStructCodec, noIndex: true},
+				byIndex: []structTag{
+					{name: "A.", noIndex: true},
+				},
+				byName: map[string]fieldCodec{
+					"A.O": {index: 0, substructCodec: oStructCodec},
 				},
 				complete: true,
 			},
@@ -271,8 +352,11 @@ func TestStructCodec(t *testing.T) {
 				A []string `datastore:",noindex"`
 			}{},
 			&structCodec{
-				fields: map[string]fieldCodec{
-					"A": {path: []int{0}, noIndex: true},
+				byIndex: []structTag{
+					{name: "A", noIndex: true},
+				},
+				byName: map[string]fieldCodec{
+					"A": {index: 0},
 				},
 				hasSlice: true,
 				complete: true,
@@ -285,8 +369,11 @@ func TestStructCodec(t *testing.T) {
 				A []vStruct `datastore:",noindex"`
 			}{},
 			&structCodec{
-				fields: map[string]fieldCodec{
-					"A": {path: []int{0}, structCodec: vStructCodec, noIndex: true},
+				byIndex: []structTag{
+					{name: "A.", noIndex: true},
+				},
+				byName: map[string]fieldCodec{
+					"A.V": {index: 0, substructCodec: vStructCodec},
 				},
 				hasSlice: true,
 				complete: true,
@@ -300,42 +387,11 @@ func TestStructCodec(t *testing.T) {
 			t.Errorf("%s: getStructCodec: %v", tc.desc, err)
 			continue
 		}
-		// can't reflect.DeepEqual b/c element order in fields map may differ
-		if !isEqualStructCodec(got, tc.want) {
+		if !reflect.DeepEqual(got, tc.want) {
 			t.Errorf("%s\ngot  %+v\nwant %+v\n", tc.desc, got, tc.want)
+			continue
 		}
 	}
-}
-
-func isEqualStructCodec(got, want *structCodec) bool {
-	if got.complete != want.complete {
-		return false
-	}
-	if got.hasSlice != want.hasSlice {
-		return false
-	}
-	if len(got.fields) != len(want.fields) {
-		return false
-	}
-	for name, wantF := range want.fields {
-		gotF := got.fields[name]
-		if !reflect.DeepEqual(wantF.path, gotF.path) {
-			return false
-		}
-		if wantF.noIndex != gotF.noIndex {
-			return false
-		}
-		if wantF.structCodec != nil {
-			if gotF.structCodec == nil {
-				return false
-			}
-			if !isEqualStructCodec(gotF.structCodec, wantF.structCodec) {
-				return false
-			}
-		}
-	}
-
-	return true
 }
 
 func TestRepeatedPropertyName(t *testing.T) {
@@ -397,7 +453,7 @@ func TestRepeatedPropertyName(t *testing.T) {
 }
 
 func TestFlatteningNestedStructs(t *testing.T) {
-	type DeepGood struct {
+	type deepGood struct {
 		A struct {
 			B []struct {
 				C struct {
@@ -406,7 +462,7 @@ func TestFlatteningNestedStructs(t *testing.T) {
 			}
 		}
 	}
-	type DeepBad struct {
+	type deepBad struct {
 		A struct {
 			B []struct {
 				C struct {
@@ -415,16 +471,16 @@ func TestFlatteningNestedStructs(t *testing.T) {
 			}
 		}
 	}
-	type ISay struct {
+	type iSay struct {
 		Tomato int
 	}
-	type YouSay struct {
+	type youSay struct {
 		Tomato int
 	}
-	type Tweedledee struct {
+	type tweedledee struct {
 		Dee int `datastore:"D"`
 	}
-	type Tweedledum struct {
+	type tweedledum struct {
 		Dum int `datastore:"D"`
 	}
 
@@ -459,18 +515,18 @@ func TestFlatteningNestedStructs(t *testing.T) {
 			Q []int
 		}{},
 		struct {
-			DeepGood
+			deepGood
 		}{},
 		struct {
-			DG DeepGood
+			DG deepGood
 		}{},
 		struct {
 			Foo struct {
-				Z int
+				Z int `datastore:"X"`
 			} `datastore:"A"`
 			Bar struct {
-				Z int
-			} `datastore:"B"`
+				Z int `datastore:"Y"`
+			} `datastore:"A"`
 		}{},
 	}
 	bad := []interface{}{
@@ -485,18 +541,18 @@ func TestFlatteningNestedStructs(t *testing.T) {
 			}
 		}{},
 		struct {
-			DeepBad
+			deepBad
 		}{},
 		struct {
-			DB DeepBad
+			DB deepBad
 		}{},
 		struct {
-			ISay
-			YouSay
+			iSay
+			youSay
 		}{},
 		struct {
-			Tweedledee
-			Tweedledum
+			tweedledee
+			tweedledum
 		}{},
 		struct {
 			Foo struct {
@@ -545,128 +601,4 @@ func TestNilKeyIsStored(t *testing.T) {
 	if x.I != 0 {
 		t.Errorf("I field was not zero")
 	}
-}
-
-func TestSaveStructOmitEmpty(t *testing.T) {
-	// Expected props names are sorted alphabetically
-	expectedPropNamesForSingles := []string{"EmptyValue", "NonEmptyValue", "OmitEmptyWithValue"}
-	expectedPropNamesForSlices := []string{"NonEmptyValue", "NonEmptyValue", "OmitEmptyWithValue", "OmitEmptyWithValue"}
-
-	testOmitted := func(expectedPropNames []string, src interface{}) {
-		// t.Helper() - this is available from Go version 1.9, but we also support Go versions 1.6, 1.7, 1.8
-		if props, err := SaveStruct(src); err != nil {
-			t.Fatal(err)
-		} else {
-			// Collect names for reporting if diffs from expected and for easier sorting
-			actualPropNames := make([]string, len(props))
-			for i := range props {
-				actualPropNames[i] = props[i].Name
-			}
-			// Sort actuals for comparing with already sorted expected names
-			sort.Sort(sort.StringSlice(actualPropNames))
-			if !reflect.DeepEqual(actualPropNames, expectedPropNames) {
-				t.Errorf("Expected this properties: %v, got: %v", expectedPropNames, actualPropNames)
-			}
-		}
-	}
-
-	testOmitted(expectedPropNamesForSingles, &struct {
-		EmptyValue         int
-		NonEmptyValue      int
-		OmitEmptyNoValue   int `datastore:",omitempty"`
-		OmitEmptyWithValue int `datastore:",omitempty"`
-	}{
-		NonEmptyValue:      1,
-		OmitEmptyWithValue: 2,
-	})
-
-	testOmitted(expectedPropNamesForSlices, &struct {
-		EmptyValue         []int
-		NonEmptyValue      []int
-		OmitEmptyNoValue   []int `datastore:",omitempty"`
-		OmitEmptyWithValue []int `datastore:",omitempty"`
-	}{
-		NonEmptyValue:      []int{1, 2},
-		OmitEmptyWithValue: []int{3, 4},
-	})
-
-	testOmitted(expectedPropNamesForSingles, &struct {
-		EmptyValue         bool
-		NonEmptyValue      bool
-		OmitEmptyNoValue   bool `datastore:",omitempty"`
-		OmitEmptyWithValue bool `datastore:",omitempty"`
-	}{
-		NonEmptyValue:      true,
-		OmitEmptyWithValue: true,
-	})
-
-	testOmitted(expectedPropNamesForSlices, &struct {
-		EmptyValue         []bool
-		NonEmptyValue      []bool
-		OmitEmptyNoValue   []bool `datastore:",omitempty"`
-		OmitEmptyWithValue []bool `datastore:",omitempty"`
-	}{
-		NonEmptyValue:      []bool{true, true},
-		OmitEmptyWithValue: []bool{true, true},
-	})
-
-	testOmitted(expectedPropNamesForSingles, &struct {
-		EmptyValue         string
-		NonEmptyValue      string
-		OmitEmptyNoValue   string `datastore:",omitempty"`
-		OmitEmptyWithValue string `datastore:",omitempty"`
-	}{
-		NonEmptyValue:      "s",
-		OmitEmptyWithValue: "s",
-	})
-
-	testOmitted(expectedPropNamesForSlices, &struct {
-		EmptyValue         []string
-		NonEmptyValue      []string
-		OmitEmptyNoValue   []string `datastore:",omitempty"`
-		OmitEmptyWithValue []string `datastore:",omitempty"`
-	}{
-		NonEmptyValue:      []string{"s1", "s2"},
-		OmitEmptyWithValue: []string{"s3", "s4"},
-	})
-
-	testOmitted(expectedPropNamesForSingles, &struct {
-		EmptyValue         float32
-		NonEmptyValue      float32
-		OmitEmptyNoValue   float32 `datastore:",omitempty"`
-		OmitEmptyWithValue float32 `datastore:",omitempty"`
-	}{
-		NonEmptyValue:      1.1,
-		OmitEmptyWithValue: 1.2,
-	})
-
-	testOmitted(expectedPropNamesForSlices, &struct {
-		EmptyValue         []float32
-		NonEmptyValue      []float32
-		OmitEmptyNoValue   []float32 `datastore:",omitempty"`
-		OmitEmptyWithValue []float32 `datastore:",omitempty"`
-	}{
-		NonEmptyValue:      []float32{1.1, 2.2},
-		OmitEmptyWithValue: []float32{3.3, 4.4},
-	})
-
-	testOmitted(expectedPropNamesForSingles, &struct {
-		EmptyValue         time.Time
-		NonEmptyValue      time.Time
-		OmitEmptyNoValue   time.Time `datastore:",omitempty"`
-		OmitEmptyWithValue time.Time `datastore:",omitempty"`
-	}{
-		NonEmptyValue:      now,
-		OmitEmptyWithValue: now,
-	})
-
-	testOmitted(expectedPropNamesForSlices, &struct {
-		EmptyValue         []time.Time
-		NonEmptyValue      []time.Time
-		OmitEmptyNoValue   []time.Time `datastore:",omitempty"`
-		OmitEmptyWithValue []time.Time `datastore:",omitempty"`
-	}{
-		NonEmptyValue:      []time.Time{now, now},
-		OmitEmptyWithValue: []time.Time{now, now},
-	})
 }

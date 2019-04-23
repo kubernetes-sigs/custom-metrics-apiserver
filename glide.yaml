@@ -9,9 +9,6 @@ import:
 - package: github.com/go-openapi/spec
   version: 1de3e0542de65ad8d75452a595886fdd0befb363  # from kubernetes Godeps.json
 
-- package: github.com/golang/glog
-  version: 44145f04b68cf362d9c4df2182967c2275eaefed  # from kubernetes Godep.json
-
 - package: github.com/spf13/cobra
   version: c439c4fa093711d42e1b01acb1235b52004753c1  # from kubernetes Godeps.json
 
@@ -30,7 +27,7 @@ import:
   - pkg/util/errors
   - pkg/util/wait
   - pkg/version
-  version: release-1.12
+  version: release-1.14
 
 - package: k8s.io/apiserver
   subpackages:
@@ -43,8 +40,7 @@ import:
   - pkg/registry/rest
   - pkg/server
   - pkg/server/options
-  - pkg/util/logs
-  version: release-1.12
+  version: release-1.14
 
 - package: k8s.io/client-go
   subpackages:
@@ -57,7 +53,7 @@ import:
   - rest
   - testing
   - tools/clientcmd
-  version: release-9.0
+  version: release-11.0
 
 - package: k8s.io/metrics
   subpackages:
@@ -65,7 +61,7 @@ import:
   - pkg/apis/custom_metrics/install
   - pkg/apis/external_metrics
   - pkg/apis/external_metrics/install
-  version: release-1.12
+  version: release-1.14
 
 testImport:
 - package: github.com/stretchr/testify
