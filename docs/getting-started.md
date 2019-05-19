@@ -244,7 +244,9 @@ func (p *testingProvider) metricFor(value int64, name types.NamespacedName, info
 
     return &custom_metrics.MetricValue{
         DescribedObject: objRef,
-        MetricName:      info.Metric,
+        Metric: custom_metrics.MetricIdentifier{
+			Name: info.Metric,
+		},
         // you'll want to use the actual timestamp in a real adapter
         Timestamp:       metav1.Time{time.Now()},
         Value:           *resource.NewMilliQuantity(value*100, resource.DecimalSI),
