@@ -32,7 +32,7 @@ import (
 )
 
 func (s *CustomMetricsAdapterServer) InstallCustomMetricsAPI() error {
-	groupInfo := genericapiserver.NewDefaultAPIGroupInfo(custom_metrics.GroupName, Scheme, metav1.ParameterCodec, Codecs)
+	groupInfo := genericapiserver.NewDefaultAPIGroupInfo(custom_metrics.GroupName, Scheme, runtime.NewParameterCodec(Scheme), Codecs)
 
 	mainGroupVer := groupInfo.PrioritizedVersions[0]
 	preferredVersionForDiscovery := metav1.GroupVersionForDiscovery{
