@@ -119,6 +119,20 @@ spec:
   groupPriorityMinimum: 100
   versionPriority: 100
 ---
+apiVersion: apiregistration.k8s.io/v1beta1
+kind: APIService
+metadata:
+  name: v1beta2.custom.metrics.k8s.io
+spec:
+  service:
+    name: custom-metrics-apiserver
+    namespace: custom-metrics
+  group: custom.metrics.k8s.io
+  version: v1beta2
+  insecureSkipTLSVerify: true
+  groupPriorityMinimum: 100
+  versionPriority: 200
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
