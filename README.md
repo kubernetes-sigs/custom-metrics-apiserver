@@ -22,17 +22,11 @@ More information can be found in the [getting started
 guide](/docs/getting-started.md), and the testing implementation can be
 found in the [test-adapter directory](/test-adapter).
 
-It is *strongly* suggested that you make use of the dependency versions
-listed in [glide.yaml](/glide.yaml), as mismatched versions of Kubernetes
-dependencies can lead to build issues.
-
 ## Development for boilerplate project
 
 ### Pre-reqs
 
-- [glide](https://github.com/Masterminds/glide#install) to install dependencies before you can use this project.
 - [Go](https://golang.org/doc/install) same version of [Go as Kubernetes](https://github.com/kubernetes/community/blob/master/contributors/devel/development.md#go)
-- [Mercurial](https://www.mercurial-scm.org/downloads) - one of dependencies requires hg
 - [git](https://git-scm.com/downloads)
 
 ### Clone and Build the Testing Adapter
