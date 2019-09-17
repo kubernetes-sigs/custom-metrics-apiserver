@@ -35,6 +35,7 @@ import (
 	apitesting "k8s.io/apimachinery/pkg/api/apitesting"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/conversion"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -43,10 +44,14 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/apiserver/pkg/apis/example"
 	examplev1 "k8s.io/apiserver/pkg/apis/example/v1"
+	"k8s.io/apiserver/pkg/features"
 	"k8s.io/apiserver/pkg/storage"
 	"k8s.io/apiserver/pkg/storage/etcd"
 	storagetests "k8s.io/apiserver/pkg/storage/tests"
 	"k8s.io/apiserver/pkg/storage/value"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	featuregatetesting "k8s.io/component-base/featuregate/testing"
+	utilpointer "k8s.io/utils/pointer"
 )
 
 var scheme = runtime.NewScheme()
@@ -74,7 +79,7 @@ func (p prefixTransformer) TransformFromStorage(b []byte, ctx value.Context) ([]
 		panic("no context provided")
 	}
 	if !bytes.HasPrefix(b, p.prefix) {
-		return nil, false, fmt.Errorf("value does not have expected prefix: %s", string(b))
+		return nil, false, fmt.Errorf("value does not have expected prefix %q: %s,", p.prefix, string(b))
 	}
 	return bytes.TrimPrefix(b, p.prefix), p.stale, p.err
 }
@@ -241,7 +246,7 @@ func TestUnconditionalDelete(t *testing.T) {
 
 	for i, tt := range tests {
 		out := &example.Pod{} // reset
-		err := store.Delete(ctx, tt.key, out, nil)
+		err := store.Delete(ctx, tt.key, out, nil, storage.ValidateAllObjectFunc)
 		if tt.expectNotFoundErr {
 			if err == nil || !storage.IsNotFound(err) {
 				t.Errorf("#%d: expecting not found error, but get: %s", i, err)
@@ -275,7 +280,7 @@ func TestConditionalDelete(t *testing.T) {
 
 	for i, tt := range tests {
 		out := &example.Pod{}
-		err := store.Delete(ctx, key, out, tt.precondition)
+		err := store.Delete(ctx, key, out, tt.precondition, storage.ValidateAllObjectFunc)
 		if tt.expectInvalidObjErr {
 			if err == nil || !storage.IsInvalidObj(err) {
 				t.Errorf("#%d: expecting invalid UID error, but get: %s", i, err)
@@ -740,17 +745,17 @@ func TestTransformationFailure(t *testing.T) {
 		t.Errorf("Unexpected error: %v", err)
 	}
 
-	// Delete succeeds but reports an error because we cannot access the body
-	if err := store.Delete(ctx, preset[1].key, &example.Pod{}, nil); !storage.IsInternalError(err) {
+	// Delete fails with internal error.
+	if err := store.Delete(ctx, preset[1].key, &example.Pod{}, nil, storage.ValidateAllObjectFunc); !storage.IsInternalError(err) {
 		t.Errorf("Unexpected error: %v", err)
 	}
-
-	if err := store.Get(ctx, preset[1].key, "", &example.Pod{}, false); !storage.IsNotFound(err) {
+	if err := store.Get(ctx, preset[1].key, "", &example.Pod{}, false); !storage.IsInternalError(err) {
 		t.Errorf("Unexpected error: %v", err)
 	}
 }
 
 func TestList(t *testing.T) {
+	defer featuregatetesting.SetFeatureGateDuringTest(t, utilfeature.DefaultFeatureGate, features.RemainingItemCount, true)()
 	codec := apitesting.TestCodec(codecs, examplev1.SchemeGroupVersion)
 	cluster := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer cluster.Terminate(t)
@@ -825,14 +830,15 @@ func TestList(t *testing.T) {
 	}
 
 	tests := []struct {
-		name           string
-		disablePaging  bool
-		rv             string
-		prefix         string
-		pred           storage.SelectionPredicate
-		expectedOut    []*example.Pod
-		expectContinue bool
-		expectError    bool
+		name                       string
+		disablePaging              bool
+		rv                         string
+		prefix                     string
+		pred                       storage.SelectionPredicate
+		expectedOut                []*example.Pod
+		expectContinue             bool
+		expectedRemainingItemCount *int64
+		expectError                bool
 	}{
 		{
 			name:        "rejects invalid resource version",
@@ -882,8 +888,9 @@ func TestList(t *testing.T) {
 				Field: fields.Everything(),
 				Limit: 1,
 			},
-			expectedOut:    []*example.Pod{preset[1].storedObj},
-			expectContinue: true,
+			expectedOut:                []*example.Pod{preset[1].storedObj},
+			expectContinue:             true,
+			expectedRemainingItemCount: utilpointer.Int64Ptr(1),
 		},
 		{
 			name:          "test List with limit when paging disabled",
@@ -1060,6 +1067,9 @@ func TestList(t *testing.T) {
 		if len(tt.expectedOut) != len(out.Items) {
 			t.Errorf("(%s): length of list want=%d, got=%d", tt.name, len(tt.expectedOut), len(out.Items))
 			continue
+		}
+		if e, a := tt.expectedRemainingItemCount, out.ListMeta.GetRemainingItemCount(); (e == nil) != (a == nil) || (e != nil && a != nil && *e != *a) {
+			t.Errorf("(%s): remainingItemCount want=%#v, got=%#v", tt.name, e, a)
 		}
 		for j, wantPod := range tt.expectedOut {
 			getPod := &out.Items[j]
@@ -1344,7 +1354,11 @@ func testSetup(t *testing.T) (context.Context, *store, *integration.ClusterV3) {
 func testPropogateStore(ctx context.Context, t *testing.T, store *store, obj *example.Pod) (string, *example.Pod) {
 	// Setup store with a key and grab the output for returning.
 	key := "/testkey"
-	err := store.unconditionalDelete(ctx, key, &example.Pod{})
+	v, err := conversion.EnforcePtr(obj)
+	if err != nil {
+		panic("unable to convert output object to pointer")
+	}
+	err = store.conditionalDelete(ctx, key, &example.Pod{}, v, nil, storage.ValidateAllObjectFunc)
 	if err != nil && !storage.IsNotFound(err) {
 		t.Fatalf("Cleanup failed: %v", err)
 	}
