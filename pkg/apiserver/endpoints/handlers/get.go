@@ -29,6 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apiserver/pkg/endpoints/handlers"
+	"k8s.io/apiserver/pkg/endpoints/handlers/negotiation"
 	"k8s.io/apiserver/pkg/endpoints/handlers/responsewriters"
 	"k8s.io/apiserver/pkg/endpoints/request"
 	utiltrace "k8s.io/utils/trace"
@@ -130,8 +131,7 @@ func ListResourceWithOptions(r cm_rest.ListerWithOptions, scope handlers.Request
 				return
 			}
 		}
-
-		responsewriters.WriteObject(http.StatusOK, scope.Kind.GroupVersion(), scope.Serializer, result, w, req)
+		responsewriters.WriteObjectNegotiated(scope.Serializer, negotiation.DefaultEndpointRestrictions, scope.Kind.GroupVersion(), w, req, http.StatusOK, result)
 		trace.Step(fmt.Sprintf("Writing http response done (%d items)", numberOfItems))
 	}
 }
