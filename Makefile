@@ -12,8 +12,11 @@ all: build-test-adapter
 build-test-adapter: vendor
 	CGO_ENABLED=0 GOARCH=$(ARCH) go build -o $(OUT_DIR)/$(ARCH)/test-adapter github.com/kubernetes-incubator/custom-metrics-apiserver/test-adapter
 
-vendor: glide.lock
-	glide install -v
+vendor: tidy
+	go mod vendor 
+
+tidy: 
+	go mod tidy 
 
 test: 
 	CGO_ENABLED=0 go test ./pkg/...
