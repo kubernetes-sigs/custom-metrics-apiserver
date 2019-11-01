@@ -10,19 +10,12 @@ HTTP endpoint.
 
 ## Prerequisites
 
-Make sure you've got a dependency management system that's compatible with
-[glide](https://github.com/Masterminds/glide).  As noted in the
-[README](/README.md), it's *strongly* recommended that you make use of the
-dependency versions listed in this project, otherwise you may encounter
-strange build errors.
-
-If you're using glide, create a project and initialize the dependencies
-like so:
+Create a project and initialize the dependencies like so:
 
 ```shell
 $ mkdir $GOPATH/src/github.com/$USER/$REPO
 $ cd $GOPATH/src/github.com/$USER/$REPO
-$ glide init
+$ go mod init
 $ glide get github.com/kubernetes-incubator/custom-metrics-apiserver
 ```
 
