@@ -1,4 +1,4 @@
-module github.com/brendanjryan/custom-metrics-apiserver
+module github.com/kubernetes-incubator/custom-metrics-apiserver
 
 go 1.12
 
