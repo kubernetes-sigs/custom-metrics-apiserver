@@ -3,4 +3,8 @@ language: go
 go:
 - '1.12.3'
 
+env:
+  global:
+    - GO111MODULE="on"
+
 script: make verify
