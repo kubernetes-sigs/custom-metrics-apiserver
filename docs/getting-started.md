@@ -1,5 +1,7 @@
 # Getting started with developing your own Custom Metrics API Server
 
+_Note: This tutorial is undergoing changes in this library's transition to using Go modules. Use at your own risk while fixes are underway!_
+
 This will walk through writing a very basic custom metrics API server using
 this library. The implementation will be static.  With a real adapter, you'd
 generally be reading from some external metrics system instead.
@@ -16,7 +18,6 @@ Create a project and initialize the dependencies like so:
 $ mkdir $GOPATH/src/github.com/$USER/$REPO
 $ cd $GOPATH/src/github.com/$USER/$REPO
 $ go mod init
-$ glide get github.com/kubernetes-incubator/custom-metrics-apiserver
 ```
 
 ## Writing the Code
