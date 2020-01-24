@@ -71,6 +71,34 @@ curl -XPOST -H 'Content-Type: application/json' http://localhost:8080/api/v1/nam
 kubectl get --raw "/apis/custom.metrics.k8s.io/v1beta1" | jq .
 ```
 
+If you wanted to target a simple nginx-deployment and then use this as an HPA scaler metric, something like this would work following the previous curl command:
+```
+apiVersion: autoscaling/v2beta2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: nginx-deployment
+  namespace: default
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: nginx-deployment
+  minReplicas: 1
+  maxReplicas: 10
+  metrics:
+  - type: Object
+    object:
+      metric:
+        name: test-metric
+      describedObject:
+        apiVersion: v1
+        kind: Service
+        name: kubernetes
+      target:
+        type: Value
+        value: 100
+```
+
 ## Compatibility
 
 The APIs in this repository follow the standard guarantees for Kubernetes
