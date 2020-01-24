@@ -96,7 +96,7 @@ spec:
         name: kubernetes
       target:
         type: Value
-        value: 100
+        value: 300m
 ```
 
 ## Compatibility
