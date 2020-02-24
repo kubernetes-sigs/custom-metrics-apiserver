@@ -7,7 +7,6 @@ require (
 	github.com/emicklei/go-restful-swagger12 v0.0.0-20170208215640-dcef7f557305
 	github.com/evanphx/json-patch v4.2.0+incompatible // indirect
 	github.com/googleapis/gnostic v0.0.0-20170729233727-0c5108395e2d
-	github.com/kubernetes-incubator/custom-metrics-apiserver v0.0.0-20190918110929-3d9be26a50eb
 	github.com/spf13/pflag v1.0.1
 	github.com/stretchr/testify v1.2.2
 	golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2 // indirect
