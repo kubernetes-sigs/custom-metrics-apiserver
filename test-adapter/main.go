@@ -26,8 +26,13 @@ import (
 	"k8s.io/component-base/logs"
 	"k8s.io/klog"
 
+	openapinamer "k8s.io/apiserver/pkg/endpoints/openapi"
+	genericapiserver "k8s.io/apiserver/pkg/server"
+
+	"github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/apiserver"
 	basecmd "github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/cmd"
 	"github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/provider"
+	generatedopenapi "github.com/kubernetes-incubator/custom-metrics-apiserver/test-adapter/generated/openapi"
 	fakeprov "github.com/kubernetes-incubator/custom-metrics-apiserver/test-adapter/provider"
 )
 
@@ -57,6 +62,11 @@ func main() {
 	defer logs.FlushLogs()
 
 	cmd := &SampleAdapter{}
+
+	cmd.OpenAPIConfig = genericapiserver.DefaultOpenAPIConfig(generatedopenapi.GetOpenAPIDefinitions, openapinamer.NewDefinitionNamer(apiserver.Scheme))
+	cmd.OpenAPIConfig.Info.Title = "test-adapter"
+	cmd.OpenAPIConfig.Info.Version = "1.0.0"
+
 	cmd.Flags().StringVar(&cmd.Message, "msg", "starting adapter...", "startup message")
 	cmd.Flags().AddGoFlagSet(flag.CommandLine) // make sure we get the klog flags
 	cmd.Flags().Parse(os.Args)
