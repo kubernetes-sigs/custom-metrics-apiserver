@@ -29,11 +29,11 @@ import (
 	openapinamer "k8s.io/apiserver/pkg/endpoints/openapi"
 	genericapiserver "k8s.io/apiserver/pkg/server"
 
-	"github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/apiserver"
-	basecmd "github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/cmd"
-	"github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/provider"
-	generatedopenapi "github.com/kubernetes-incubator/custom-metrics-apiserver/test-adapter/generated/openapi"
-	fakeprov "github.com/kubernetes-incubator/custom-metrics-apiserver/test-adapter/provider"
+	"github.com/kubernetes-sigs/custom-metrics-apiserver/pkg/apiserver"
+	basecmd "github.com/kubernetes-sigs/custom-metrics-apiserver/pkg/cmd"
+	"github.com/kubernetes-sigs/custom-metrics-apiserver/pkg/provider"
+	generatedopenapi "github.com/kubernetes-sigs/custom-metrics-apiserver/test-adapter/generated/openapi"
+	fakeprov "github.com/kubernetes-sigs/custom-metrics-apiserver/test-adapter/provider"
 )
 
 type SampleAdapter struct {

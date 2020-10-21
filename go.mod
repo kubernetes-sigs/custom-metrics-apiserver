@@ -1,4 +1,4 @@
-module github.com/kubernetes-incubator/custom-metrics-apiserver
+module github.com/kubernetes-sigs/custom-metrics-apiserver
 
 go 1.13
 
