@@ -10,7 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/restmapper"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 // RengeneratingDiscoveryRESTMapper is a RESTMapper which Regenerates its cache of mappings periodically.

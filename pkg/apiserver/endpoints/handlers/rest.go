@@ -26,7 +26,7 @@ import (
 	"k8s.io/apiserver/pkg/endpoints/handlers"
 	"k8s.io/apiserver/pkg/endpoints/handlers/responsewriters"
 	"k8s.io/apiserver/pkg/endpoints/request"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 func writeError(scope *handlers.RequestScope, err error, w http.ResponseWriter, req *http.Request) {

@@ -149,6 +149,8 @@ func (ch *CMHandlers) registerResourceHandlers(a *MetricsAPIInstaller, ws *restf
 		reqScope.Subresource,
 		"cluster",
 		"custom-metrics",
+		false,
+		"",
 		restfulListResourceWithOptions(lister, reqScope),
 	)
 
@@ -185,6 +187,8 @@ func (ch *CMHandlers) registerResourceHandlers(a *MetricsAPIInstaller, ws *restf
 		reqScope.Subresource,
 		"resource",
 		"custom-metrics",
+		false,
+		"",
 		restfulListResourceWithOptions(lister, reqScope),
 	)
 
@@ -221,6 +225,8 @@ func (ch *CMHandlers) registerResourceHandlers(a *MetricsAPIInstaller, ws *restf
 		reqScope.Subresource,
 		"resource",
 		"custom-metrics",
+		false,
+		"",
 		restfulListResourceWithOptions(lister, reqScope),
 	)
 
