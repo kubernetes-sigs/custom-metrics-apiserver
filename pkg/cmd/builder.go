@@ -31,10 +31,10 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	openapicommon "k8s.io/kube-openapi/pkg/common"
 
-	"github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/apiserver"
-	"github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/cmd/server"
-	"github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/dynamicmapper"
-	"github.com/kubernetes-incubator/custom-metrics-apiserver/pkg/provider"
+	"github.com/kubernetes-sigs/custom-metrics-apiserver/pkg/apiserver"
+	"github.com/kubernetes-sigs/custom-metrics-apiserver/pkg/cmd/server"
+	"github.com/kubernetes-sigs/custom-metrics-apiserver/pkg/dynamicmapper"
+	"github.com/kubernetes-sigs/custom-metrics-apiserver/pkg/provider"
 )
 
 // AdapterBase provides a base set of functionality for any custom metrics adapter.
