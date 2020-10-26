@@ -71,6 +71,9 @@ func init() {
 	installcm.Install(Scheme)
 	installem.Install(Scheme)
 
+	// we need custom conversion functions to list resources with options
+	RegisterConversions(Scheme)
+
 	// we need to add the options to empty v1
 	// TODO fix the server code to avoid this
 	metav1.AddToGroupVersion(Scheme, schema.GroupVersion{Version: "v1"})
