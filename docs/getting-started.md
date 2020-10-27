@@ -49,7 +49,7 @@ import (
     "fmt"
     "time"
 
-    "k8s.io/klog"
+    "k8s.io/klog/v2"
     apierr "k8s.io/apimachinery/pkg/api/errors"
     apimeta "k8s.io/apimachinery/pkg/api/meta"
     "k8s.io/apimachinery/pkg/api/resource"

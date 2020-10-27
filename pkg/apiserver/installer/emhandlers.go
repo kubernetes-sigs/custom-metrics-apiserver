@@ -114,6 +114,8 @@ func (ch *EMHandlers) registerResourceHandlers(a *MetricsAPIInstaller, ws *restf
 		reqScope.Subresource,
 		"cluster",
 		"external-metrics",
+		false,
+		"",
 		restfulListResource(lister, nil, reqScope, false, a.minRequestTimeout),
 	)
 
