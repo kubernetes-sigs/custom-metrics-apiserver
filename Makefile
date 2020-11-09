@@ -8,12 +8,6 @@ OPENAPI_PATH=./vendor/k8s.io/kube-openapi
 
 VERSION?=latest
 
-ifeq  ($(PLATFORM),Linux)
-SED_REPLACE :=
-else
-SED_REPLACE := ''
-endif
-
 .PHONY: all build-test-adapter test verify-gofmt gofmt verify test-adapter-container
 
 all: build-test-adapter
@@ -40,10 +34,10 @@ verify: vendor verify-gofmt
 test-adapter-container: build-test-adapter
 	cp test-adapter-deploy/Dockerfile $(TEMP_DIR)
 	cp $(OUT_DIR)/$(ARCH)/test-adapter $(TEMP_DIR)/adapter
-	cd $(TEMP_DIR) && sed -i $(SED_REPLACE) "s|BASEIMAGE|scratch|g" Dockerfile
-	sed -i $(SED_REPLACE) 's|REGISTRY|'${REGISTRY}'|g' test-adapter-deploy/testing-adapter.yaml
+	cd $(TEMP_DIR) && sed -i.bak "s|BASEIMAGE|scratch|g" Dockerfile
+	sed -i.bak 's|REGISTRY|'${REGISTRY}'|g' test-adapter-deploy/testing-adapter.yaml
 	docker build -t $(REGISTRY)/$(IMAGE)-$(ARCH):$(VERSION) $(TEMP_DIR)
-	rm -rf $(TEMP_DIR)
+	rm -rf $(TEMP_DIR) test-adapter-deploy/testing-adapter.yaml.bak
 
 test-kind:
 	kind load docker-image $(REGISTRY)/$(IMAGE)-$(ARCH):$(VERSION)
