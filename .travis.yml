@@ -3,8 +3,13 @@ language: go
 go:
 - '1.15'
 
-env:
-  global:
-    - GO111MODULE="on"
+jobs:
+  include:
+    - stage: all
+      name: Verify
+      script: make verify && git diff --exit-code
+    - name: Build test adapter
+      script: make build-test-adapter
+    - name: Unit tests
+      script: make test
 
-script: make verify

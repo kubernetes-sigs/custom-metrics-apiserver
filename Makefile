@@ -35,7 +35,7 @@ verify-gofmt:
 gofmt:
 	./hack/gofmt-all.sh
 
-verify: verify-gofmt test
+verify: vendor verify-gofmt
 
 test-adapter-container: build-test-adapter
 	cp test-adapter-deploy/Dockerfile $(TEMP_DIR)
