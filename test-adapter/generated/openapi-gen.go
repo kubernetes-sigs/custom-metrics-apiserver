@@ -1,3 +1,5 @@
+// +build codegen
+
 /*
 Copyright 2018 The Kubernetes Authors.
 
@@ -13,8 +15,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-
-// +build ignore
 
 // Package is only a stub to ensure k8s.io/kube-openapi/cmd/openapi-gen is vendored
 // so the same version of kube-openapi is used to generate and render the openapi spec
