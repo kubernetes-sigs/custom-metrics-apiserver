@@ -8,41 +8,12 @@ OPENAPI_PATH=./vendor/k8s.io/kube-openapi
 
 VERSION?=latest
 
-.PHONY: all build-test-adapter test verify-gofmt gofmt verify test-adapter-container
-
+.PHONY: all
 all: build-test-adapter
-build-test-adapter: vendor test-adapter/generated/openapi/zz_generated.openapi.go
+
+.PHONY: build-test-adapter
+build-test-adapter: test-adapter/generated/openapi/zz_generated.openapi.go
 	CGO_ENABLED=0 GOOS=linux GOARCH=$(ARCH) go build -o $(OUT_DIR)/$(ARCH)/test-adapter github.com/kubernetes-sigs/custom-metrics-apiserver/test-adapter
-
-vendor: tidy
-	go mod vendor
-
-tidy:
-	go mod tidy
-
-test:
-	CGO_ENABLED=0 go test ./pkg/...
-
-verify-gofmt:
-	./hack/gofmt-all.sh -v
-
-gofmt:
-	./hack/gofmt-all.sh
-
-verify: vendor verify-gofmt
-
-test-adapter-container: build-test-adapter
-	cp test-adapter-deploy/Dockerfile $(TEMP_DIR)
-	cp $(OUT_DIR)/$(ARCH)/test-adapter $(TEMP_DIR)/adapter
-	cd $(TEMP_DIR) && sed -i.bak "s|BASEIMAGE|scratch|g" Dockerfile
-	sed -i.bak 's|REGISTRY|'${REGISTRY}'|g' test-adapter-deploy/testing-adapter.yaml
-	docker build -t $(REGISTRY)/$(IMAGE)-$(ARCH):$(VERSION) $(TEMP_DIR)
-	rm -rf $(TEMP_DIR) test-adapter-deploy/testing-adapter.yaml.bak
-
-test-kind:
-	kind load docker-image $(REGISTRY)/$(IMAGE)-$(ARCH):$(VERSION)
-	kubectl apply -f test-adapter-deploy/testing-adapter.yaml
-	kubectl rollout restart -n custom-metrics deployment/custom-metrics-apiserver
 
 test-adapter/generated/openapi/zz_generated.openapi.go: go.mod go.sum
 	go run $(OPENAPI_PATH)/cmd/openapi-gen/openapi-gen.go --logtostderr \
@@ -52,3 +23,39 @@ test-adapter/generated/openapi/zz_generated.openapi.go: go.mod go.sum
 	    -O zz_generated.openapi \
 	    -o ./ \
 	    -r /dev/null
+
+.PHONY: gofmt
+gofmt:
+	./hack/gofmt-all.sh
+
+.PHONY: verify-gofmt
+verify-gofmt:
+	./hack/gofmt-all.sh -v
+
+.PHONY: verify
+verify: verify-vendor verify-gofmt
+
+.PHONY: verify-vendor
+verify-vendor: go.mod
+	go mod tidy
+	go mod vendor
+	git diff --exit-code go.mod go.sum vendor
+
+.PHONY: test
+test:
+	CGO_ENABLED=0 go test ./pkg/...
+
+.PHONY: test-adapter-container
+test-adapter-container: build-test-adapter
+	cp test-adapter-deploy/Dockerfile $(TEMP_DIR)
+	cp $(OUT_DIR)/$(ARCH)/test-adapter $(TEMP_DIR)/adapter
+	cd $(TEMP_DIR) && sed -i.bak "s|BASEIMAGE|scratch|g" Dockerfile
+	sed -i.bak 's|REGISTRY|'${REGISTRY}'|g' test-adapter-deploy/testing-adapter.yaml
+	docker build -t $(REGISTRY)/$(IMAGE)-$(ARCH):$(VERSION) $(TEMP_DIR)
+	rm -rf $(TEMP_DIR) test-adapter-deploy/testing-adapter.yaml.bak
+
+.PHONY: test-kind
+test-kind:
+	kind load docker-image $(REGISTRY)/$(IMAGE)-$(ARCH):$(VERSION)
+	kubectl apply -f test-adapter-deploy/testing-adapter.yaml
+	kubectl rollout restart -n custom-metrics deployment/custom-metrics-apiserver
