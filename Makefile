@@ -28,7 +28,13 @@ gofmt:
 	./hack/gofmt-all.sh
 
 .PHONY: verify
-verify: verify-gofmt
+verify: verify-deps verify-gofmt
+
+.PHONY: verify-deps
+verify-deps:
+	go mod verify
+	go mod tidy
+	@git diff --exit-code -- go.sum go.mod
 
 .PHONY: verify-gofmt
 verify-gofmt:
