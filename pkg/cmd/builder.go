@@ -98,6 +98,7 @@ func (b *AdapterBase) InstallFlags() {
 		b.SecureServing.AddFlags(b.FlagSet)
 		b.Authentication.AddFlags(b.FlagSet)
 		b.Authorization.AddFlags(b.FlagSet)
+		b.Audit.AddFlags(b.FlagSet)
 		b.Features.AddFlags(b.FlagSet)
 
 		b.FlagSet.StringVar(&b.RemoteKubeConfigFile, "lister-kubeconfig", b.RemoteKubeConfigFile,
