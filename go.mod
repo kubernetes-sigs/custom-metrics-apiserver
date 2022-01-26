@@ -5,7 +5,6 @@ go 1.16
 require (
 	github.com/emicklei/go-restful v2.15.0+incompatible
 	github.com/emicklei/go-restful-swagger12 v0.0.0-20201014110547-68ccff494617
-	github.com/go-openapi/spec v0.20.3
 	github.com/googleapis/gnostic v0.5.5
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.7.0
