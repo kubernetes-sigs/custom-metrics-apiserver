@@ -60,6 +60,7 @@ func (a *SampleAdapter) makeProviderOrDie() (provider.MetricsProvider, *restful.
 func main() {
 	logs.InitLogs()
 	defer logs.FlushLogs()
+	klog.InitFlags(nil)
 
 	cmd := &SampleAdapter{}
 
