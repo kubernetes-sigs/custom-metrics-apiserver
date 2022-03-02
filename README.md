@@ -65,10 +65,12 @@ kubectl proxy &
 curl -XPOST -H 'Content-Type: application/json' http://localhost:8001/api/v1/namespaces/custom-metrics/services/custom-metrics-apiserver:http/proxy/write-metrics/namespaces/default/services/kubernetes/test-metric --data-raw '"300m"'
 ```
 
-```
+```bash
 # you can pipe to `jq .` to pretty-print the output, if it's installed
 # (otherwise, it's not necessary)
 kubectl get --raw "/apis/custom.metrics.k8s.io/v1beta1" | jq .
+# fetching certain custom metrics of namespaced resources
+kubectl get --raw "/apis/custom.metrics.k8s.io/v1beta1/namespaces/default/services/kubernetes/test-metric" | jq .
 ```
 
 If you wanted to target a simple nginx-deployment and then use this as an HPA scaler metric, something like this would work following the previous curl command:
