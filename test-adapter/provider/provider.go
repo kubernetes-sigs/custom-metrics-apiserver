@@ -322,6 +322,41 @@ func (p *testingProvider) ListAllMetrics() []provider.CustomMetricInfo {
 	return metrics
 }
 
+func (p *testingProvider) GetAllMetrics(ctx context.Context, selector labels.Selector, metricSelector labels.Selector) (*custom_metrics.MetricValueList, error) {
+	p.valuesLock.RLock()
+	defer p.valuesLock.RUnlock()
+	infos := make(map[provider.CustomMetricInfo]string)
+	for resource := range p.values {
+		infos[resource.CustomMetricInfo] = resource.Namespace
+	}
+	var res []custom_metrics.MetricValue
+	for info, namespace := range infos {
+		names, err := helpers.ListObjectNames(p.mapper, p.client, namespace, selector, info)
+		if err != nil {
+			return nil, err
+		}
+		for _, name := range names {
+			namespacedName := types.NamespacedName{Name: name, Namespace: namespace}
+			value, err := p.valueFor(info, namespacedName, metricSelector)
+			if err != nil {
+				if apierr.IsNotFound(err) {
+					continue
+				}
+				return nil, err
+			}
+			metric, err := p.metricFor(value, namespacedName, selector, info, metricSelector)
+			if err != nil {
+				return nil, err
+			}
+			res = append(res, *metric)
+		}
+	}
+	return &custom_metrics.MetricValueList{
+		Items: res,
+	}, nil
+
+}
+
 func (p *testingProvider) GetExternalMetric(ctx context.Context, namespace string, metricSelector labels.Selector, info provider.ExternalMetricInfo) (*external_metrics.ExternalMetricValueList, error) {
 	p.valuesLock.RLock()
 	defer p.valuesLock.RUnlock()

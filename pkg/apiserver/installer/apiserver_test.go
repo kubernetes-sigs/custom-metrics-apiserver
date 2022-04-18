@@ -254,6 +254,10 @@ func (p *fakeCMProvider) ListAllMetrics() []provider.CustomMetricInfo {
 	return p.metrics
 }
 
+func (p *fakeCMProvider) GetAllMetrics(ctx context.Context, selector labels.Selector, metricSelector labels.Selector) (*custom_metrics.MetricValueList, error) {
+	return nil, nil
+}
+
 type T struct {
 	Method        string
 	Path          string

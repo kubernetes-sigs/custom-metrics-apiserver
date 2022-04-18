@@ -96,6 +96,8 @@ type CustomMetricsProvider interface {
 	// an error, so it is reccomended that implementors cache and
 	// periodically update this list, instead of querying every time.
 	ListAllMetrics() []CustomMetricInfo
+
+	GetAllMetrics(ctx context.Context, selector labels.Selector, metricSelector labels.Selector) (*custom_metrics.MetricValueList, error)
 }
 
 // ExternalMetricsProvider is a source of external metrics.
