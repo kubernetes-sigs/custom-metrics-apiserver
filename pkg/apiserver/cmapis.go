@@ -80,7 +80,7 @@ func (s *CustomMetricsAdapterServer) cmAPI(groupInfo *genericapiserver.APIGroupI
 			Convertor:       groupInfo.Scheme,
 			UnsafeConvertor: runtime.UnsafeObjectConvertor(groupInfo.Scheme),
 			Typer:           groupInfo.Scheme,
-			Linker:          runtime.SelfLinker(meta.NewAccessor()),
+			Namer:           runtime.Namer(meta.NewAccessor()),
 		},
 
 		ResourceLister: provider.NewCustomMetricResourceLister(s.customMetricsProvider),

@@ -77,7 +77,7 @@ func (s *CustomMetricsAdapterServer) emAPI(groupInfo *genericapiserver.APIGroupI
 			Convertor:       groupInfo.Scheme,
 			UnsafeConvertor: runtime.UnsafeObjectConvertor(groupInfo.Scheme),
 			Typer:           groupInfo.Scheme,
-			Linker:          runtime.SelfLinker(meta.NewAccessor()),
+			Namer:           runtime.Namer(meta.NewAccessor()),
 		},
 		ResourceLister: provider.NewExternalMetricResourceLister(s.externalMetricsProvider),
 		Handlers:       &specificapi.EMHandlers{},

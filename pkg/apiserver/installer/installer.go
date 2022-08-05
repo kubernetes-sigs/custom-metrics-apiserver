@@ -24,14 +24,12 @@ import (
 	"time"
 
 	"k8s.io/apimachinery/pkg/conversion"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apiserver/pkg/endpoints"
 	"k8s.io/apiserver/pkg/endpoints/discovery"
 	"k8s.io/apiserver/pkg/endpoints/handlers"
 	"k8s.io/apiserver/pkg/endpoints/handlers/negotiation"
-	"k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/registry/rest"
 
 	"github.com/emicklei/go-restful"
@@ -269,21 +267,6 @@ type documentable interface {
 // polymorphism over subresources.
 type MetricsNaming struct {
 	handlers.ContextBasedNaming
-}
-
-func (n MetricsNaming) GenerateLink(requestInfo *request.RequestInfo, obj runtime.Object) (uri string, err error) {
-	if requestInfo.Resource != "metrics" {
-		n.SelfLinkPathSuffix += "/" + requestInfo.Subresource
-	}
-
-	// since this is not a pointer receiver, it's ok to modify it here
-	// (since we copy around every method call)
-	if n.ClusterScoped {
-		n.SelfLinkPathPrefix += requestInfo.Resource + "/"
-		return n.ContextBasedNaming.GenerateLink(requestInfo, obj)
-	}
-
-	return n.ContextBasedNaming.GenerateLink(requestInfo, obj)
 }
 
 func restfulListResource(r rest.Lister, rw rest.Watcher, scope handlers.RequestScope, forceWatch bool, minRequestTimeout time.Duration) restful.RouteFunction {
