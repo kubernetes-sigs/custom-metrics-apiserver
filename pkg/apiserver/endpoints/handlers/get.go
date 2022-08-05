@@ -24,7 +24,6 @@ import (
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
 	metainternalversion "k8s.io/apimachinery/pkg/apis/meta/internalversion"
 	metainternalversionscheme "k8s.io/apimachinery/pkg/apis/meta/internalversion/scheme"
 	"k8s.io/apimachinery/pkg/fields"
@@ -119,21 +118,9 @@ func ListResourceWithOptions(r cm_rest.ListerWithOptions, scope handlers.Request
 			return
 		}
 		trace.Step("Listing from storage done")
-		numberOfItems, err := setListSelfLink(result, ctx, req, scope.Namer)
-		if err != nil {
-			writeError(&scope, err, w, req)
-			return
-		}
-		trace.Step("Self-linking done")
-		// Ensure empty lists return a non-nil items slice
-		if numberOfItems == 0 && meta.IsListType(result) {
-			if err := meta.SetList(result, []runtime.Object{}); err != nil {
-				writeError(&scope, err, w, req)
-				return
-			}
-		}
+
 		responsewriters.WriteObjectNegotiated(scope.Serializer, negotiation.DefaultEndpointRestrictions, scope.Kind.GroupVersion(), w, req, http.StatusOK, result)
-		trace.Step(fmt.Sprintf("Writing http response done (%d items)", numberOfItems))
+		trace.Step(fmt.Sprintf("Writing http response done"))
 	}
 }
 

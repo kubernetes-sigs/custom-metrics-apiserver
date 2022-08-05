@@ -18,7 +18,6 @@ package installer
 
 import (
 	"net/http"
-	gpath "path"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apiserver/pkg/endpoints/handlers"
@@ -135,9 +134,8 @@ func (ch *CMHandlers) registerResourceHandlers(a *MetricsAPIInstaller, ws *restf
 	doc := "list custom metrics describing an object or objects"
 	reqScope.Namer = MetricsNaming{
 		handlers.ContextBasedNaming{
-			SelfLinker:         a.group.Linker,
-			ClusterScoped:      true,
-			SelfLinkPathPrefix: a.prefix + "/",
+			Namer:         a.group.Namer,
+			ClusterScoped: true,
 		},
 	}
 
@@ -174,9 +172,8 @@ func (ch *CMHandlers) registerResourceHandlers(a *MetricsAPIInstaller, ws *restf
 	// install the namespace-scoped route
 	reqScope.Namer = MetricsNaming{
 		handlers.ContextBasedNaming{
-			SelfLinker:         a.group.Linker,
-			ClusterScoped:      false,
-			SelfLinkPathPrefix: gpath.Join(a.prefix, "namespaces") + "/",
+			Namer:         a.group.Namer,
+			ClusterScoped: false,
 		},
 	}
 	namespacedHandler := metrics.InstrumentRouteFunc(
@@ -211,9 +208,8 @@ func (ch *CMHandlers) registerResourceHandlers(a *MetricsAPIInstaller, ws *restf
 	// install the special route for metrics describing namespaces (last b/c we modify the context func)
 	reqScope.Namer = MetricsNaming{
 		handlers.ContextBasedNaming{
-			SelfLinker:         a.group.Linker,
-			ClusterScoped:      false,
-			SelfLinkPathPrefix: gpath.Join(a.prefix, "namespaces") + "/",
+			Namer:         a.group.Namer,
+			ClusterScoped: false,
 		},
 	}
 

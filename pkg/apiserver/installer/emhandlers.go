@@ -18,7 +18,6 @@ package installer
 
 import (
 	"net/http"
-	gpath "path"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apiserver/pkg/endpoints/handlers"
@@ -100,9 +99,8 @@ func (ch *EMHandlers) registerResourceHandlers(a *MetricsAPIInstaller, ws *restf
 	doc := "list external metrics"
 	reqScope.Namer = MetricsNaming{
 		handlers.ContextBasedNaming{
-			SelfLinker:         a.group.Linker,
-			ClusterScoped:      false,
-			SelfLinkPathPrefix: gpath.Join(a.prefix, "namespaces") + "/",
+			Namer:         a.group.Namer,
+			ClusterScoped: false,
 		},
 	}
 
