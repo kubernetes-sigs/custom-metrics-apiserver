@@ -1,7 +1,5 @@
 # Getting started with developing your own Custom Metrics API Server
 
-_Note: This tutorial is undergoing changes in this library's transition to using Go modules. Use at your own risk while fixes are underway!_
-
 This will walk through writing a very basic custom metrics API server using
 this library. The implementation will be static.  With a real adapter, you'd
 generally be reading from some external metrics system instead.
@@ -15,9 +13,8 @@ HTTP endpoint.
 Create a project and initialize the dependencies like so:
 
 ```shell
-$ mkdir $GOPATH/src/github.com/$USER/$REPO
-$ cd $GOPATH/src/github.com/$USER/$REPO
-$ go mod init
+$ go mod init example.com/youradapter
+$ go get sigs.k8s.io/custom-metrics-apiserver@latest
 ```
 
 ## Writing the Code
@@ -31,7 +28,7 @@ from the API for metrics.
 There are currently two provider interfaces, corresponding to two
 different APIs: the custom metrics API (for metrics that describe
 Kubernetes objects), and the external metrics API (for metrics that don't
-describe kubernetes objects, or are otherwise not attached to a particular
+describe Kubernetes objects, or are otherwise not attached to a particular
 object). For the sake of brevity, this walkthrough will show an example of
 the custom metrics API, but a full example including the external metrics
 API can be found in the [test adapter](/test-adapter).
@@ -46,22 +43,20 @@ Put your provider in the `pkg/provider` directory in your repository.
 package provider
 
 import (
-    "fmt"
+    "context"
     "time"
 
-    "k8s.io/klog/v2"
-    apierr "k8s.io/apimachinery/pkg/api/errors"
     apimeta "k8s.io/apimachinery/pkg/api/meta"
     "k8s.io/apimachinery/pkg/api/resource"
     metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
     "k8s.io/apimachinery/pkg/labels"
-    "k8s.io/apimachinery/pkg/runtime"
     "k8s.io/apimachinery/pkg/runtime/schema"
+    "k8s.io/apimachinery/pkg/types"
     "k8s.io/client-go/dynamic"
     "k8s.io/metrics/pkg/apis/custom_metrics"
 
     "sigs.k8s.io/custom-metrics-apiserver/pkg/provider"
-    "k8s.io/metrics/pkg/apis/external_metrics"
+    "sigs.k8s.io/custom-metrics-apiserver/pkg/provider/helpers"
 )
 ```
 
@@ -74,9 +69,8 @@ called `CustomMetricsProvider`, and looks like this:
 type CustomMetricsProvider interface {
     ListAllMetrics() []CustomMetricInfo
 
-    GetMetricByName(name types.NamespacedName, info CustomMetricInfo) (*custom_metrics.MetricValue, error)
-    GetMetricBySelector(namespace string, selector labels.Selector, info CustomMetricInfo) (*custom_metrics.MetricValueList, error)
-}
+    GetMetricByName(ctx context.Context, name types.NamespacedName, info CustomMetricInfo, metricSelector labels.Selector) (*custom_metrics.MetricValue, error)
+    GetMetricBySelector(ctx context.Context, namespace string, selector labels.Selector, info CustomMetricInfo, metricSelector labels.Selector) (*custom_metrics.MetricValueList, error)}
 ```
 
 First, there's a method for listing all metrics available at any point in
@@ -201,6 +195,14 @@ type yourProvider struct {
     // just increment values when they're requested
     values map[provider.CustomMetricInfo]int64
 }
+
+func NewProvider(client dynamic.Interface, mapper apimeta.RESTMapper) provider.CustomMetricsProvider {
+	return &yourProvider{
+		client: client,
+		mapper: mapper,
+		values: make(map[provider.CustomMetricInfo]int64),
+	}
+}
 ```
 
 Then, you can implement the methods that fetch the metrics.  In this
@@ -229,7 +231,7 @@ func (p *yourProvider) valueFor(info provider.CustomMetricInfo) (int64, error) {
 }
 
 // metricFor constructs a result for a single metric value.
-func (p *testingProvider) metricFor(value int64, name types.NamespacedName, info provider.CustomMetricInfo) (*custom_metrics.MetricValue, error) {
+func (p *yourProvider) metricFor(value int64, name types.NamespacedName, info provider.CustomMetricInfo) (*custom_metrics.MetricValue, error) {
     // construct a reference referring to the described object
     objRef, err := helpers.ReferenceFor(p.mapper, name, info)
     if err != nil {
@@ -238,7 +240,9 @@ func (p *testingProvider) metricFor(value int64, name types.NamespacedName, info
 
     return &custom_metrics.MetricValue{
         DescribedObject: objRef,
-        MetricName:      info.Metric,
+        Metric: custom_metrics.MetricIdentifier{
+                Name:  info.Metric,
+        },
         // you'll want to use the actual timestamp in a real adapter
         Timestamp:       metav1.Time{time.Now()},
         Value:           *resource.NewMilliQuantity(value*100, resource.DecimalSI),
@@ -251,7 +255,7 @@ a single metric value for one object (for example, for the `object` metric
 type in the HorizontalPodAutoscaler):
 
 ```go
-func (p *yourProvider) GetMetricByName(name types.NamespacedName, info provider.CustomMetricInfo) (*custom_metrics.MetricValue, error) {
+func (p *yourProvider) GetMetricByName(ctx context.Context, name types.NamespacedName, info provider.CustomMetricInfo, metricSelector labels.Selector) (*custom_metrics.MetricValue, error) {
     value, err := p.valueFor(info)
     if err != nil {
         return nil, err
@@ -264,7 +268,7 @@ The second fetches multiple metric values, one for each object in a set
 (for example, for the `pods` metric type in the HorizontalPodAutoscaler).
 
 ```go
-func (p *yourProvider) GetMetricBySelector(namespace string, selector labels.Selector, info provider.CustomMetricInfo) (*custom_metrics.MetricValueList, error) {
+func (p *yourProvider) GetMetricBySelector(ctx context.Context, namespace string, selector labels.Selector, info provider.CustomMetricInfo, metricSelector labels.Selector) (*custom_metrics.MetricValueList, error) {
     totalValue, err := p.valueFor(info)
     if err != nil {
         return nil, err
@@ -311,15 +315,15 @@ import (
     "flag"
     "os"
 
-    "github.com/golang/klog"
     "k8s.io/apimachinery/pkg/util/wait"
     "k8s.io/component-base/logs"
+    "k8s.io/klog/v2"
 
     basecmd "sigs.k8s.io/custom-metrics-apiserver/pkg/cmd"
     "sigs.k8s.io/custom-metrics-apiserver/pkg/provider"
 
     // make this the path to the provider that you just wrote
-    yourprov "github.com/user/repo/pkg/provider"
+    yourprov "example.com/youradapter/pkg/provider"
 )
 ```
 
@@ -343,7 +347,9 @@ func main() {
     // initialize the flags, with one custom flag for the message
     cmd := &YourAdapter{}
     cmd.Flags().StringVar(&cmd.Message, "msg", "starting adapter...", "startup message")
-    cmd.Flags().AddGoFlagSet(flag.CommandLine) // make sure you get the klog flags
+    // make sure you get the klog flags
+    logs.AddGoFlags(flag.CommandLine)
+    cmd.Flags().AddGoFlagSet(flag.CommandLine)
     cmd.Flags().Parse(os.Args)
 
     provider := cmd.makeProviderOrDie()
@@ -366,7 +372,7 @@ solution, extra credentials, or advanced configuration.  For the provider
 you wrote above, the setup code looks something like this:
 
 ```go
-func (a *SampleAdapter) makeProviderOrDie() provider.CustomMetricsProvider {
+func (a *YourAdapter) makeProviderOrDie() provider.CustomMetricsProvider {
     client, err := a.DynamicClient()
     if err != nil {
         klog.Fatalf("unable to construct dynamic client: %v", err)
@@ -379,6 +385,12 @@ func (a *SampleAdapter) makeProviderOrDie() provider.CustomMetricsProvider {
 
     return yourprov.NewProvider(client, mapper)
 }
+```
+
+Then add the missing dependencies with:
+
+```shell
+$ go mod tidy
 ```
 
 ## Build the project
