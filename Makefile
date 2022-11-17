@@ -27,18 +27,8 @@ pkg/generated/openapi/%/zz_generated.openapi.go: go.mod go.sum
 	    -r /dev/null
 
 .PHONY: build-test-adapter
-build-test-adapter: $(generated_files) test-adapter/generated/openapi/zz_generated.openapi.go
+build-test-adapter: $(generated_files)
 	CGO_ENABLED=0 GOOS=linux GOARCH=$(ARCH) go build -o $(OUT_DIR)/$(ARCH)/test-adapter sigs.k8s.io/custom-metrics-apiserver/test-adapter
-
-test-adapter/generated/openapi/zz_generated.openapi.go: go.mod go.sum
-	go install -mod=readonly k8s.io/kube-openapi/cmd/openapi-gen
-	$(GOPATH)/bin/openapi-gen --logtostderr \
-	    -i k8s.io/metrics/pkg/apis/custom_metrics,k8s.io/metrics/pkg/apis/custom_metrics/v1beta1,k8s.io/metrics/pkg/apis/custom_metrics/v1beta2,k8s.io/metrics/pkg/apis/external_metrics,k8s.io/metrics/pkg/apis/external_metrics/v1beta1,k8s.io/apimachinery/pkg/apis/meta/v1,k8s.io/apimachinery/pkg/api/resource,k8s.io/apimachinery/pkg/version,k8s.io/api/core/v1 \
-	    -h ./hack/boilerplate.go.txt \
-	    -p ./test-adapter/generated/openapi \
-	    -O zz_generated.openapi \
-	    -o ./ \
-	    -r /dev/null
 
 .PHONY: gofmt
 gofmt:
