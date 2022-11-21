@@ -164,7 +164,9 @@ func (p *testingProvider) updateMetric(request *restful.Request, response *restf
 	value := new(resource.Quantity)
 	err := request.ReadEntity(value)
 	if err != nil {
-		response.WriteErrorString(http.StatusBadRequest, err.Error())
+		if err := response.WriteErrorString(http.StatusBadRequest, err.Error()); err != nil {
+			klog.Errorf("Error writing error: %s", err)
+		}
 		return
 	}
 
@@ -175,7 +177,9 @@ func (p *testingProvider) updateMetric(request *restful.Request, response *restf
 	if len(sel) > 0 {
 		metricLabels, err = labels.ConvertSelectorToLabelsMap(sel)
 		if err != nil {
-			response.WriteErrorString(http.StatusBadRequest, err.Error())
+			if err := response.WriteErrorString(http.StatusBadRequest, err.Error()); err != nil {
+				klog.Errorf("Error writing error: %s", err)
+			}
 			return
 		}
 	}
@@ -240,7 +244,7 @@ func (p *testingProvider) metricFor(value resource.Quantity, name types.Namespac
 		Metric: custom_metrics.MetricIdentifier{
 			Name: info.Metric,
 		},
-		Timestamp: metav1.Time{time.Now()},
+		Timestamp: metav1.Time{Time: time.Now()},
 		Value:     value,
 	}
 
