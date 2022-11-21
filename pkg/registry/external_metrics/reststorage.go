@@ -54,6 +54,9 @@ func (r *REST) New() runtime.Object {
 	return &external_metrics.ExternalMetricValue{}
 }
 
+func (r *REST) Destroy() {
+}
+
 // Implement Lister
 
 // NewList returns empty MetricValueList.
