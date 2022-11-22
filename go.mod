@@ -4,8 +4,6 @@ go 1.18
 
 require (
 	github.com/emicklei/go-restful v2.16.0+incompatible
-	github.com/emicklei/go-restful-swagger12 v0.0.0-20201014110547-68ccff494617
-	github.com/google/gnostic v0.6.9
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.8.0
 	k8s.io/api v0.24.3
@@ -39,6 +37,7 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
+	github.com/google/gnostic v0.6.9 // indirect
 	github.com/google/go-cmp v0.5.5 // indirect
 	github.com/google/gofuzz v1.1.0 // indirect
 	github.com/google/uuid v1.1.2 // indirect

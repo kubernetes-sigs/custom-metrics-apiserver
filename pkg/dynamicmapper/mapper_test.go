@@ -25,13 +25,14 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/discovery/fake"
 	core "k8s.io/client-go/testing"
 )
 
 const testingMapperRefreshInterval = 1 * time.Second
 
-func setupMapper(t *testing.T, stopChan <-chan struct{}) (*RegeneratingDiscoveryRESTMapper, *FakeDiscovery) {
-	fakeDiscovery := &FakeDiscovery{Fake: &core.Fake{}}
+func setupMapper(t *testing.T, stopChan <-chan struct{}) (*RegeneratingDiscoveryRESTMapper, *fake.FakeDiscovery) {
+	fakeDiscovery := &fake.FakeDiscovery{Fake: &core.Fake{}}
 	mapper, err := NewRESTMapper(fakeDiscovery, testingMapperRefreshInterval)
 	require.NoError(t, err, "constructing the rest mapper shouldn't have produced an error")
 
