@@ -26,13 +26,8 @@ import (
 	"k8s.io/component-base/logs"
 	"k8s.io/klog/v2"
 
-	openapinamer "k8s.io/apiserver/pkg/endpoints/openapi"
-	genericapiserver "k8s.io/apiserver/pkg/server"
-
-	"sigs.k8s.io/custom-metrics-apiserver/pkg/apiserver"
 	basecmd "sigs.k8s.io/custom-metrics-apiserver/pkg/cmd"
 	"sigs.k8s.io/custom-metrics-apiserver/pkg/provider"
-	generatedopenapi "sigs.k8s.io/custom-metrics-apiserver/test-adapter/generated/openapi"
 	fakeprov "sigs.k8s.io/custom-metrics-apiserver/test-adapter/provider"
 )
 
@@ -63,10 +58,7 @@ func main() {
 	klog.InitFlags(nil)
 
 	cmd := &SampleAdapter{}
-
-	cmd.OpenAPIConfig = genericapiserver.DefaultOpenAPIConfig(generatedopenapi.GetOpenAPIDefinitions, openapinamer.NewDefinitionNamer(apiserver.Scheme))
-	cmd.OpenAPIConfig.Info.Title = "test-adapter"
-	cmd.OpenAPIConfig.Info.Version = "1.0.0"
+	cmd.Name = "test-adapter"
 
 	cmd.Flags().StringVar(&cmd.Message, "msg", "starting adapter...", "startup message")
 	cmd.Flags().AddGoFlagSet(flag.CommandLine) // make sure we get the klog flags
