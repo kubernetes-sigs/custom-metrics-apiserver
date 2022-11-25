@@ -53,6 +53,9 @@ func (r *REST) New() runtime.Object {
 	return &custom_metrics.MetricValue{}
 }
 
+func (r *REST) Destroy() {
+}
+
 // Implement ListerWithOptions
 
 func (r *REST) NewList() runtime.Object {
