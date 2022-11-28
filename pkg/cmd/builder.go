@@ -244,6 +244,7 @@ func (b *AdapterBase) defaultOpenAPIConfig() *openapicommon.Config {
 	getAPIDefinitions := mergeOpenAPIDefinitions(definitionsGetters)
 	openAPIConfig := genericapiserver.DefaultOpenAPIConfig(getAPIDefinitions, openapinamer.NewDefinitionNamer(apiserver.Scheme))
 	openAPIConfig.Info.Title = b.Name
+	openAPIConfig.Info.Version = "1.0.0"
 	return openAPIConfig
 }
 
