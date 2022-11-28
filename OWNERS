@@ -1,2 +1,5 @@
 approvers:
 - dgrisonnet
+reviewers:
+- dgrisonnet
+- olivierlemasle
