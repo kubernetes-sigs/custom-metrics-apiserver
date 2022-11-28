@@ -20,6 +20,7 @@ import (
 	"flag"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/emicklei/go-restful/v3"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -34,7 +35,7 @@ import (
 type SampleAdapter struct {
 	basecmd.AdapterBase
 
-	// Message is printed on succesful startup
+	// Message is printed on successful startup
 	Message string
 }
 
@@ -62,7 +63,9 @@ func main() {
 
 	cmd.Flags().StringVar(&cmd.Message, "msg", "starting adapter...", "startup message")
 	cmd.Flags().AddGoFlagSet(flag.CommandLine) // make sure we get the klog flags
-	cmd.Flags().Parse(os.Args)
+	if err := cmd.Flags().Parse(os.Args); err != nil {
+		klog.Fatalf("unable to parse flags: %v", err)
+	}
 
 	testProvider, webService := cmd.makeProviderOrDie()
 	cmd.WithCustomMetrics(testProvider)
@@ -73,7 +76,11 @@ func main() {
 	restful.DefaultContainer.Add(webService)
 	go func() {
 		// Open port for POSTing fake metrics
-		klog.Fatal(http.ListenAndServe(":8080", nil))
+		server := &http.Server{
+			Addr:              ":8080",
+			ReadHeaderTimeout: 3 * time.Second,
+		}
+		klog.Fatal(server.ListenAndServe())
 	}()
 	if err := cmd.Run(wait.NeverStop); err != nil {
 		klog.Fatalf("unable to run custom metrics adapter: %v", err)

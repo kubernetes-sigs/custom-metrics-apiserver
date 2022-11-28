@@ -19,7 +19,7 @@ package installer
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -33,16 +33,17 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/types"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	genericapi "k8s.io/apiserver/pkg/endpoints"
 	genericapifilters "k8s.io/apiserver/pkg/endpoints/filters"
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	"k8s.io/metrics/pkg/apis/custom_metrics"
 	installcm "k8s.io/metrics/pkg/apis/custom_metrics/install"
 	cmv1beta1 "k8s.io/metrics/pkg/apis/custom_metrics/v1beta1"
+	"k8s.io/metrics/pkg/apis/external_metrics"
 	installem "k8s.io/metrics/pkg/apis/external_metrics/install"
 	emv1beta1 "k8s.io/metrics/pkg/apis/external_metrics/v1beta1"
 
-	"k8s.io/metrics/pkg/apis/external_metrics"
 	"sigs.k8s.io/custom-metrics-apiserver/pkg/provider"
 	custommetricstorage "sigs.k8s.io/custom-metrics-apiserver/pkg/registry/custom_metrics"
 	externalmetricstorage "sigs.k8s.io/custom-metrics-apiserver/pkg/registry/external_metrics"
@@ -73,7 +74,7 @@ func init() {
 	installem.Install(Scheme)
 
 	// we need custom conversion functions to list resources with options
-	RegisterConversions(Scheme)
+	utilruntime.Must(RegisterConversions(Scheme))
 
 	// we need to add the options to empty v1
 	// TODO fix the server code to avoid this
@@ -97,7 +98,7 @@ func init() {
 
 func extractBody(response *http.Response, object runtime.Object) error {
 	defer response.Body.Close()
-	body, err := ioutil.ReadAll(response.Body)
+	body, err := io.ReadAll(response.Body)
 	if err != nil {
 		return err
 	}
@@ -106,11 +107,26 @@ func extractBody(response *http.Response, object runtime.Object) error {
 
 func extractBodyString(response *http.Response) (string, error) {
 	defer response.Body.Close()
-	body, err := ioutil.ReadAll(response.Body)
+	body, err := io.ReadAll(response.Body)
 	if err != nil {
 		return "", err
 	}
 	return string(body), err
+}
+
+func apiGroupVersion(gv schema.GroupVersion, groupInfo genericapiserver.APIGroupInfo) *genericapi.APIGroupVersion {
+	return &genericapi.APIGroupVersion{
+		Root:             prefix,
+		GroupVersion:     gv,
+		MetaGroupVersion: groupInfo.MetaGroupVersion,
+		ParameterCodec:   groupInfo.ParameterCodec,
+		Serializer:       groupInfo.NegotiatedSerializer,
+		Creater:          groupInfo.Scheme,
+		Convertor:        groupInfo.Scheme,
+		UnsafeConvertor:  runtime.UnsafeObjectConvertor(groupInfo.Scheme),
+		Typer:            groupInfo.Scheme,
+		Namer:            runtime.Namer(meta.NewAccessor()),
+	}
 }
 
 func handleCustomMetrics(prov provider.CustomMetricsProvider) http.Handler {
@@ -119,22 +135,10 @@ func handleCustomMetrics(prov provider.CustomMetricsProvider) http.Handler {
 	mux := container.ServeMux
 	resourceStorage := custommetricstorage.NewREST(prov)
 	group := &MetricsAPIGroupVersion{
-		DynamicStorage: resourceStorage,
-		APIGroupVersion: &genericapi.APIGroupVersion{
-			Root:             prefix,
-			GroupVersion:     customMetricsGroupVersion,
-			MetaGroupVersion: customMetricsGroupInfo.MetaGroupVersion,
-
-			ParameterCodec:  customMetricsGroupInfo.ParameterCodec,
-			Serializer:      customMetricsGroupInfo.NegotiatedSerializer,
-			Creater:         customMetricsGroupInfo.Scheme,
-			Convertor:       customMetricsGroupInfo.Scheme,
-			UnsafeConvertor: runtime.UnsafeObjectConvertor(customMetricsGroupInfo.Scheme),
-			Typer:           customMetricsGroupInfo.Scheme,
-			Namer:           runtime.Namer(meta.NewAccessor()),
-		},
-		ResourceLister: provider.NewCustomMetricResourceLister(prov),
-		Handlers:       &CMHandlers{},
+		DynamicStorage:  resourceStorage,
+		APIGroupVersion: apiGroupVersion(customMetricsGroupVersion, customMetricsGroupInfo),
+		ResourceLister:  provider.NewCustomMetricResourceLister(prov),
+		Handlers:        &CMHandlers{},
 	}
 
 	if err := group.InstallREST(container); err != nil {
@@ -154,22 +158,10 @@ func handleExternalMetrics(prov provider.ExternalMetricsProvider) http.Handler {
 	resourceStorage := externalmetricstorage.NewREST(prov)
 
 	group := &MetricsAPIGroupVersion{
-		DynamicStorage: resourceStorage,
-		APIGroupVersion: &genericapi.APIGroupVersion{
-			Root:             prefix,
-			GroupVersion:     externalMetricsGroupVersion,
-			MetaGroupVersion: externalMetricsGroupInfo.MetaGroupVersion,
-
-			ParameterCodec:  externalMetricsGroupInfo.ParameterCodec,
-			Serializer:      externalMetricsGroupInfo.NegotiatedSerializer,
-			Creater:         externalMetricsGroupInfo.Scheme,
-			Convertor:       externalMetricsGroupInfo.Scheme,
-			UnsafeConvertor: runtime.UnsafeObjectConvertor(externalMetricsGroupInfo.Scheme),
-			Typer:           externalMetricsGroupInfo.Scheme,
-			Namer:           runtime.Namer(meta.NewAccessor()),
-		},
-		ResourceLister: provider.NewExternalMetricResourceLister(prov),
-		Handlers:       &EMHandlers{},
+		DynamicStorage:  resourceStorage,
+		APIGroupVersion: apiGroupVersion(externalMetricsGroupVersion, externalMetricsGroupInfo),
+		ResourceLister:  provider.NewExternalMetricResourceLister(prov),
+		Handlers:        &EMHandlers{},
 	}
 
 	if err := group.InstallREST(container); err != nil {
@@ -192,29 +184,28 @@ type fakeCMProvider struct {
 
 func (p *fakeCMProvider) valuesFor(name types.NamespacedName, info provider.CustomMetricInfo, metricSelector labels.Selector) (string, []custom_metrics.MetricValue, bool) {
 	if info.Namespaced {
-		metricId := name.Namespace + "/" + info.GroupResource.String() + "/" + name.Name + "/" + info.Metric
-		values, ok := p.namespacedValues[metricId]
-		return metricId, values, ok
-	} else {
-		metricId := info.GroupResource.String() + "/" + name.Name + "/" + info.Metric
-		values, ok := p.rootValues[metricId]
-		return metricId, values, ok
+		metricID := name.Namespace + "/" + info.GroupResource.String() + "/" + name.Name + "/" + info.Metric
+		values, ok := p.namespacedValues[metricID]
+		return metricID, values, ok
 	}
+	metricID := info.GroupResource.String() + "/" + name.Name + "/" + info.Metric
+	values, ok := p.rootValues[metricID]
+	return metricID, values, ok
 }
 
 func (p *fakeCMProvider) GetMetricByName(ctx context.Context, name types.NamespacedName, info provider.CustomMetricInfo, metricSelector labels.Selector) (*custom_metrics.MetricValue, error) {
-	metricId, values, ok := p.valuesFor(name, info, metricSelector)
+	metricID, values, ok := p.valuesFor(name, info, metricSelector)
 	if !ok {
-		return nil, fmt.Errorf("non-existent metric requested (id: %s)", metricId)
+		return nil, fmt.Errorf("non-existent metric requested (id: %s)", metricID)
 	}
 
 	return &values[0], nil
 }
 
 func (p *fakeCMProvider) GetMetricBySelector(ctx context.Context, namespace string, selector labels.Selector, info provider.CustomMetricInfo, metricSelector labels.Selector) (*custom_metrics.MetricValueList, error) {
-	metricId, values, ok := p.valuesFor(types.NamespacedName{Namespace: namespace, Name: "*"}, info, metricSelector)
+	metricID, values, ok := p.valuesFor(types.NamespacedName{Namespace: namespace, Name: "*"}, info, metricSelector)
 	if !ok {
-		return nil, fmt.Errorf("non-existent metric requested (id: %s)", metricId)
+		return nil, fmt.Errorf("non-existent metric requested (id: %s)", metricID)
 	}
 
 	var trimmedValues custom_metrics.MetricValueList
@@ -226,7 +217,7 @@ func (p *fakeCMProvider) GetMetricBySelector(ctx context.Context, namespace stri
 		subsetCounts = p.rootSubsetCounts
 	}
 
-	if trimmedCount, ok := subsetCounts[metricId]; ok {
+	if trimmedCount, ok := subsetCounts[metricID]; ok {
 		trimmedValues = custom_metrics.MetricValueList{
 			Items: make([]custom_metrics.MetricValue, 0, trimmedCount),
 		}

@@ -27,6 +27,7 @@ import (
 	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/registry/rest"
 	"k8s.io/metrics/pkg/apis/external_metrics"
+
 	"sigs.k8s.io/custom-metrics-apiserver/pkg/provider"
 )
 

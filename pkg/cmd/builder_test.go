@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
 	"k8s.io/kube-openapi/pkg/builder"
 
 	"sigs.k8s.io/custom-metrics-apiserver/pkg/provider/fake"
