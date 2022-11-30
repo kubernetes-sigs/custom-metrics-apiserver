@@ -67,6 +67,10 @@ type AdapterBase struct {
 	// DiscoveryInterval specifies the interval at which to recheck discovery
 	// information for the discovery RESTMapper.  It's set from a flag.
 	DiscoveryInterval time.Duration
+	// ClientQPS specifies the maximum QPS for the client-side throttle. It's set from a flag.
+	ClientQPS float32
+	// ClientBurst specifies the maximum QPS burst for client-side throttle. It's set from a flag.
+	ClientBurst int
 
 	// FlagSet is the flagset to add flags to.
 	// It defaults to the normal CommandLine flags
@@ -110,7 +114,9 @@ func (b *AdapterBase) InstallFlags() {
 			"kubeconfig file pointing at the 'core' kubernetes server with enough rights to list "+
 				"any described objects")
 		b.FlagSet.DurationVar(&b.DiscoveryInterval, "discovery-interval", b.DiscoveryInterval,
-			"interval at which to refresh API discovery information")
+			"Interval at which to refresh API discovery information")
+		b.FlagSet.Float32Var(&b.ClientQPS, "client-qps", rest.DefaultQPS, "Maximum QPS for client-side throttle")
+		b.FlagSet.IntVar(&b.ClientBurst, "client-burst", rest.DefaultBurst, "Maximum QPS burst for client-side throttle")
 	})
 }
 
@@ -152,6 +158,13 @@ func (b *AdapterBase) ClientConfig() (*rest.Config, error) {
 			return nil, fmt.Errorf("unable to construct lister client config to initialize provider: %v", err)
 		}
 		b.clientConfig = clientConfig
+	}
+
+	if b.ClientQPS > 0 {
+		b.clientConfig.QPS = b.ClientQPS
+	}
+	if b.ClientBurst > 0 {
+		b.clientConfig.Burst = b.ClientBurst
 	}
 	return b.clientConfig, nil
 }
