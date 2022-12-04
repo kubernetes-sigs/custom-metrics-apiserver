@@ -1,4 +1,5 @@
 *.swp
 *~
 _output
+apiserver.local.config/
 .idea/
