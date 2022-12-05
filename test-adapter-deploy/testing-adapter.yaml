@@ -56,7 +56,6 @@ spec:
         args:
         - /adapter
         - --secure-port=6443
-        - --logtostderr=true
         - --v=10
         ports:
         - containerPort: 6443
