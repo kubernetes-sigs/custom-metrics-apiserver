@@ -25,8 +25,10 @@ import (
 	"github.com/emicklei/go-restful/v3"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/component-base/logs"
+	"k8s.io/component-base/metrics/legacyregistry"
 	"k8s.io/klog/v2"
 
+	"sigs.k8s.io/custom-metrics-apiserver/pkg/apiserver/metrics"
 	basecmd "sigs.k8s.io/custom-metrics-apiserver/pkg/cmd"
 	"sigs.k8s.io/custom-metrics-apiserver/pkg/provider"
 	fakeprov "sigs.k8s.io/custom-metrics-apiserver/test-adapter/provider"
@@ -70,6 +72,10 @@ func main() {
 	testProvider, webService := cmd.makeProviderOrDie()
 	cmd.WithCustomMetrics(testProvider)
 	cmd.WithExternalMetrics(testProvider)
+
+	if err := metrics.RegisterMetrics(legacyregistry.Register); err != nil {
+		klog.Fatal("unable to register metrics: %v", err)
+	}
 
 	klog.Infof(cmd.Message)
 	// Set up POST endpoint for writing fake metric values
