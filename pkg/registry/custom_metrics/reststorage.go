@@ -26,7 +26,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apiserver/pkg/endpoints/request"
-	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/registry/rest"
 	"k8s.io/metrics/pkg/apis/custom_metrics"
 
@@ -97,7 +96,7 @@ func (r *REST) List(ctx context.Context, options *metainternalversion.ListOption
 		}
 	}
 
-	namespace := genericapirequest.NamespaceValue(ctx)
+	namespace := request.NamespaceValue(ctx)
 
 	requestInfo, ok := request.RequestInfoFrom(ctx)
 	if !ok {

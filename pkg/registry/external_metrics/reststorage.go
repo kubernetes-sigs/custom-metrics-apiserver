@@ -24,7 +24,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apiserver/pkg/endpoints/request"
-	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/registry/rest"
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
@@ -73,7 +72,7 @@ func (r *REST) List(ctx context.Context, options *metainternalversion.ListOption
 		metricSelector = options.LabelSelector
 	}
 
-	namespace := genericapirequest.NamespaceValue(ctx)
+	namespace := request.NamespaceValue(ctx)
 
 	requestInfo, ok := request.RequestInfoFrom(ctx)
 	if !ok {
