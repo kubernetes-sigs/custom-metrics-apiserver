@@ -17,7 +17,6 @@ limitations under the License.
 package main
 
 import (
-	"flag"
 	"net/http"
 	"os"
 	"time"
@@ -56,13 +55,12 @@ func (a *SampleAdapter) makeProviderOrDie() (provider.MetricsProvider, *restful.
 func main() {
 	logs.InitLogs()
 	defer logs.FlushLogs()
-	klog.InitFlags(nil)
 
 	cmd := &SampleAdapter{}
 	cmd.Name = "test-adapter"
 
 	cmd.Flags().StringVar(&cmd.Message, "msg", "starting adapter...", "startup message")
-	cmd.Flags().AddGoFlagSet(flag.CommandLine) // make sure we get the klog flags
+	logs.AddFlags(cmd.Flags())
 	if err := cmd.Flags().Parse(os.Args); err != nil {
 		klog.Fatalf("unable to parse flags: %v", err)
 	}
