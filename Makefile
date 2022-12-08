@@ -61,11 +61,30 @@ update-lint: golangci
 	$(GOPATH)/bin/golangci-lint run --fix --modules-download-mode=readonly
 
 
+# License
+# -------
+
+HAS_ADDLICENSE:=$(shell which $(GOPATH)/bin/addlicense)
+.PHONY: verify-licenses
+verify-licenses:addlicense
+	find -type f -name "*.go" | xargs $(GOPATH)/bin/addlicense -check || (echo 'Run "make update-licenses"' && exit 1)
+
+.PHONY: update-licenses
+update-licenses: addlicense
+	find -type f -name "*.go" | xargs $(GOPATH)/bin/addlicense -c "The Kubernetes Authors."
+
+.PHONY: addlicense
+addlicense:
+ifndef HAS_ADDLICENSE
+	go install -mod=readonly github.com/google/addlicense
+endif
+
+
 # Verify
 # ------
 
 .PHONY: verify
-verify: verify-deps verify-lint
+verify: verify-deps verify-lint verify-licenses
 
 .PHONY: verify-deps
 verify-deps:
