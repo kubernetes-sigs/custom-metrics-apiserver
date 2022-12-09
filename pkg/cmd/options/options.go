@@ -40,6 +40,7 @@ type CustomMetricsAdapterServerOptions struct {
 	Features       *genericoptions.FeatureOptions
 
 	OpenAPIConfig *openapicommon.Config
+	EnableMetrics bool
 }
 
 // NewCustomMetricsAdapterServerOptions creates a new instance of
@@ -51,6 +52,8 @@ func NewCustomMetricsAdapterServerOptions() *CustomMetricsAdapterServerOptions {
 		Authorization:  genericoptions.NewDelegatingAuthorizationOptions(),
 		Audit:          genericoptions.NewAuditOptions(),
 		Features:       genericoptions.NewFeatureOptions(),
+
+		EnableMetrics: true,
 	}
 
 	return o
@@ -103,6 +106,8 @@ func (o *CustomMetricsAdapterServerOptions) ApplyTo(serverConfig *genericapiserv
 	if o.OpenAPIConfig != nil {
 		serverConfig.OpenAPIConfig = o.OpenAPIConfig
 	}
+
+	serverConfig.EnableMetrics = o.EnableMetrics
 
 	return nil
 }
