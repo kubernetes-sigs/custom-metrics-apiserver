@@ -20,7 +20,6 @@ import (
 	"context"
 	"net/http"
 	"sync"
-	"time"
 
 	"github.com/emicklei/go-restful/v3"
 	apierr "k8s.io/apimachinery/pkg/api/errors"
@@ -97,8 +96,9 @@ var (
 )
 
 type metricValue struct {
-	labels labels.Set
-	value  resource.Quantity
+	labels    labels.Set
+	value     resource.Quantity
+	timestamp metav1.Time
 }
 
 var _ provider.MetricsProvider = &testingProvider{}
@@ -204,16 +204,17 @@ func (p *testingProvider) updateMetric(request *restful.Request, response *restf
 		NamespacedName:   namespacedName,
 	}
 	p.values[metricInfo] = metricValue{
-		labels: metricLabels,
-		value:  *value,
+		labels:    metricLabels,
+		value:     *value,
+		timestamp: metav1.Now(),
 	}
 }
 
 // valueFor is a helper function to get just the value of a specific metric
-func (p *testingProvider) valueFor(info provider.CustomMetricInfo, name types.NamespacedName, metricSelector labels.Selector) (resource.Quantity, error) {
+func (p *testingProvider) valueFor(info provider.CustomMetricInfo, name types.NamespacedName, metricSelector labels.Selector) (metricValue, error) {
 	info, _, err := info.Normalized(p.mapper)
 	if err != nil {
-		return resource.Quantity{}, err
+		return metricValue{}, err
 	}
 	metricInfo := CustomMetricResource{
 		CustomMetricInfo: info,
@@ -222,18 +223,18 @@ func (p *testingProvider) valueFor(info provider.CustomMetricInfo, name types.Na
 
 	value, found := p.values[metricInfo]
 	if !found {
-		return resource.Quantity{}, provider.NewMetricNotFoundForError(info.GroupResource, info.Metric, name.Name)
+		return metricValue{}, provider.NewMetricNotFoundForError(info.GroupResource, info.Metric, name.Name)
 	}
 
 	if !metricSelector.Matches(value.labels) {
-		return resource.Quantity{}, provider.NewMetricNotFoundForSelectorError(info.GroupResource, info.Metric, name.Name, metricSelector)
+		return metricValue{}, provider.NewMetricNotFoundForSelectorError(info.GroupResource, info.Metric, name.Name, metricSelector)
 	}
 
-	return value.value, nil
+	return value, nil
 }
 
 // metricFor is a helper function which formats a value, metric, and object info into a MetricValue which can be returned by the metrics API
-func (p *testingProvider) metricFor(value resource.Quantity, name types.NamespacedName, selector labels.Selector, info provider.CustomMetricInfo, metricSelector labels.Selector) (*custom_metrics.MetricValue, error) {
+func (p *testingProvider) metricFor(value metricValue, name types.NamespacedName, selector labels.Selector, info provider.CustomMetricInfo, metricSelector labels.Selector) (*custom_metrics.MetricValue, error) {
 	objRef, err := helpers.ReferenceFor(p.mapper, name, info)
 	if err != nil {
 		return nil, err
@@ -244,8 +245,8 @@ func (p *testingProvider) metricFor(value resource.Quantity, name types.Namespac
 		Metric: custom_metrics.MetricIdentifier{
 			Name: info.Metric,
 		},
-		Timestamp: metav1.Time{Time: time.Now()},
-		Value:     value,
+		Timestamp: value.timestamp,
+		Value:     value.value,
 	}
 
 	if len(metricSelector.String()) > 0 {
