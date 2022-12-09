@@ -95,6 +95,9 @@ func (o *CustomMetricsAdapterServerOptions) ApplyTo(serverConfig *genericapiserv
 	if err := o.Audit.ApplyTo(serverConfig); err != nil {
 		return err
 	}
+	if err := o.Features.ApplyTo(serverConfig); err != nil {
+		return err
+	}
 
 	// enable OpenAPI schemas
 	if o.OpenAPIConfig != nil {
