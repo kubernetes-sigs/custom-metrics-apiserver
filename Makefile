@@ -105,12 +105,10 @@ test-adapter-container: build-test-adapter
 	cp test-adapter-deploy/Dockerfile $(TEMP_DIR)
 	cp $(OUT_DIR)/$(ARCH)/test-adapter $(TEMP_DIR)/adapter
 	cd $(TEMP_DIR) && sed -i.bak "s|BASEIMAGE|scratch|g" Dockerfile
-	sed -i.bak 's|REGISTRY|'${REGISTRY}'|g' test-adapter-deploy/testing-adapter.yaml
 	docker build -t $(REGISTRY)/$(IMAGE)-$(ARCH):$(VERSION) $(TEMP_DIR)
-	rm -rf $(TEMP_DIR) test-adapter-deploy/testing-adapter.yaml.bak
 
 .PHONY: test-kind
 test-kind:
 	kind load docker-image $(REGISTRY)/$(IMAGE)-$(ARCH):$(VERSION)
-	kubectl apply -f test-adapter-deploy/testing-adapter.yaml
+	sed 's|REGISTRY|'${REGISTRY}'|g' test-adapter-deploy/testing-adapter.yaml | kubectl apply -f -
 	kubectl rollout restart -n custom-metrics deployment/custom-metrics-apiserver
