@@ -54,8 +54,8 @@ spec:
         image: REGISTRY/k8s-test-metrics-adapter-amd64:latest
         imagePullPolicy: IfNotPresent
         args:
-        - /adapter
         - --secure-port=6443
+        - --cert-dir=/var/run/serving-cert
         - --v=10
         ports:
         - containerPort: 6443
@@ -65,8 +65,14 @@ spec:
         volumeMounts:
         - mountPath: /tmp
           name: temp-vol
+          readOnly: false
+        - mountPath: /var/run/serving-cert
+          name: volume-serving-cert
+          readOnly: false
       volumes:
       - name: temp-vol
+        emptyDir: {}
+      - name: volume-serving-cert
         emptyDir: {}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
