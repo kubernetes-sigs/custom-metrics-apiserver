@@ -39,6 +39,10 @@ func TestFreshness(t *testing.T) {
 			{Timestamp: metav1.NewTime(now.Add(-10 * time.Second))},
 			{Timestamp: metav1.NewTime(now.Add(-10 * time.Second))},
 			{Timestamp: metav1.NewTime(now.Add(-2 * time.Second))},
+
+			// A metric with a timestamp "in the future" may happen if the metric
+			// provider is not synced with the metric APIserver.
+			{Timestamp: metav1.NewTime(now.Add(1 * time.Second))},
 		},
 	}
 	externalObserver := NewFreshnessObserver("external.metrics.k8s.io")
@@ -86,29 +90,29 @@ func TestFreshness(t *testing.T) {
 	metrics_apiserver_metric_freshness_seconds_bucket{group="custom.metrics.k8s.io",le="+Inf"} 3
 	metrics_apiserver_metric_freshness_seconds_sum{group="custom.metrics.k8s.io"} 40
 	metrics_apiserver_metric_freshness_seconds_count{group="custom.metrics.k8s.io"} 3
-	metrics_apiserver_metric_freshness_seconds_bucket{group="external.metrics.k8s.io",le="1"} 0
-	metrics_apiserver_metric_freshness_seconds_bucket{group="external.metrics.k8s.io",le="1.364"} 0
-	metrics_apiserver_metric_freshness_seconds_bucket{group="external.metrics.k8s.io",le="1.8604960000000004"} 0
-	metrics_apiserver_metric_freshness_seconds_bucket{group="external.metrics.k8s.io",le="2.5377165440000007"} 1
-	metrics_apiserver_metric_freshness_seconds_bucket{group="external.metrics.k8s.io",le="3.4614453660160014"} 1
-	metrics_apiserver_metric_freshness_seconds_bucket{group="external.metrics.k8s.io",le="4.721411479245826"} 1
-	metrics_apiserver_metric_freshness_seconds_bucket{group="external.metrics.k8s.io",le="6.440005257691307"} 1
-	metrics_apiserver_metric_freshness_seconds_bucket{group="external.metrics.k8s.io",le="8.784167171490942"} 1
-	metrics_apiserver_metric_freshness_seconds_bucket{group="external.metrics.k8s.io",le="11.981604021913647"} 3
-	metrics_apiserver_metric_freshness_seconds_bucket{group="external.metrics.k8s.io",le="16.342907885890217"} 3
-	metrics_apiserver_metric_freshness_seconds_bucket{group="external.metrics.k8s.io",le="22.291726356354257"} 3
-	metrics_apiserver_metric_freshness_seconds_bucket{group="external.metrics.k8s.io",le="30.405914750067208"} 3
-	metrics_apiserver_metric_freshness_seconds_bucket{group="external.metrics.k8s.io",le="41.47366771909167"} 3
-	metrics_apiserver_metric_freshness_seconds_bucket{group="external.metrics.k8s.io",le="56.57008276884105"} 3
-	metrics_apiserver_metric_freshness_seconds_bucket{group="external.metrics.k8s.io",le="77.16159289669919"} 3
-	metrics_apiserver_metric_freshness_seconds_bucket{group="external.metrics.k8s.io",le="105.2484127110977"} 3
-	metrics_apiserver_metric_freshness_seconds_bucket{group="external.metrics.k8s.io",le="143.55883493793726"} 3
-	metrics_apiserver_metric_freshness_seconds_bucket{group="external.metrics.k8s.io",le="195.81425085534644"} 3
-	metrics_apiserver_metric_freshness_seconds_bucket{group="external.metrics.k8s.io",le="267.09063816669254"} 3
-	metrics_apiserver_metric_freshness_seconds_bucket{group="external.metrics.k8s.io",le="364.31163045936864"} 3
-	metrics_apiserver_metric_freshness_seconds_bucket{group="external.metrics.k8s.io",le="+Inf"} 3
-	metrics_apiserver_metric_freshness_seconds_sum{group="external.metrics.k8s.io"} 22
-	metrics_apiserver_metric_freshness_seconds_count{group="external.metrics.k8s.io"} 3
+	metrics_apiserver_metric_freshness_seconds_bucket{group="external.metrics.k8s.io",le="1"} 1
+	metrics_apiserver_metric_freshness_seconds_bucket{group="external.metrics.k8s.io",le="1.364"} 1
+	metrics_apiserver_metric_freshness_seconds_bucket{group="external.metrics.k8s.io",le="1.8604960000000004"} 1
+	metrics_apiserver_metric_freshness_seconds_bucket{group="external.metrics.k8s.io",le="2.5377165440000007"} 2
+	metrics_apiserver_metric_freshness_seconds_bucket{group="external.metrics.k8s.io",le="3.4614453660160014"} 2
+	metrics_apiserver_metric_freshness_seconds_bucket{group="external.metrics.k8s.io",le="4.721411479245826"} 2
+	metrics_apiserver_metric_freshness_seconds_bucket{group="external.metrics.k8s.io",le="6.440005257691307"} 2
+	metrics_apiserver_metric_freshness_seconds_bucket{group="external.metrics.k8s.io",le="8.784167171490942"} 2
+	metrics_apiserver_metric_freshness_seconds_bucket{group="external.metrics.k8s.io",le="11.981604021913647"} 4
+	metrics_apiserver_metric_freshness_seconds_bucket{group="external.metrics.k8s.io",le="16.342907885890217"} 4
+	metrics_apiserver_metric_freshness_seconds_bucket{group="external.metrics.k8s.io",le="22.291726356354257"} 4
+	metrics_apiserver_metric_freshness_seconds_bucket{group="external.metrics.k8s.io",le="30.405914750067208"} 4
+	metrics_apiserver_metric_freshness_seconds_bucket{group="external.metrics.k8s.io",le="41.47366771909167"} 4
+	metrics_apiserver_metric_freshness_seconds_bucket{group="external.metrics.k8s.io",le="56.57008276884105"} 4
+	metrics_apiserver_metric_freshness_seconds_bucket{group="external.metrics.k8s.io",le="77.16159289669919"} 4
+	metrics_apiserver_metric_freshness_seconds_bucket{group="external.metrics.k8s.io",le="105.2484127110977"} 4
+	metrics_apiserver_metric_freshness_seconds_bucket{group="external.metrics.k8s.io",le="143.55883493793726"} 4
+	metrics_apiserver_metric_freshness_seconds_bucket{group="external.metrics.k8s.io",le="195.81425085534644"} 4
+	metrics_apiserver_metric_freshness_seconds_bucket{group="external.metrics.k8s.io",le="267.09063816669254"} 4
+	metrics_apiserver_metric_freshness_seconds_bucket{group="external.metrics.k8s.io",le="364.31163045936864"} 4
+	metrics_apiserver_metric_freshness_seconds_bucket{group="external.metrics.k8s.io",le="+Inf"} 4
+	metrics_apiserver_metric_freshness_seconds_sum{group="external.metrics.k8s.io"} 21
+	metrics_apiserver_metric_freshness_seconds_count{group="external.metrics.k8s.io"} 4
 	`))
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
