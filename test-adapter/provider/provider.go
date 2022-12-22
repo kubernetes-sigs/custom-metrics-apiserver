@@ -154,10 +154,6 @@ func (p *testingProvider) updateMetric(request *restful.Request, response *restf
 
 	namespace := request.PathParameter("namespace")
 	resourceType := request.PathParameter("resourceType")
-	namespaced := false
-	if len(namespace) > 0 || resourceType == "namespaces" {
-		namespaced = true
-	}
 	name := request.PathParameter("name")
 	metricName := request.PathParameter("metric")
 
@@ -187,7 +183,7 @@ func (p *testingProvider) updateMetric(request *restful.Request, response *restf
 	info := provider.CustomMetricInfo{
 		GroupResource: groupResource,
 		Metric:        metricName,
-		Namespaced:    namespaced,
+		Namespaced:    namespace != "",
 	}
 
 	info, _, err = info.Normalized(p.mapper)
