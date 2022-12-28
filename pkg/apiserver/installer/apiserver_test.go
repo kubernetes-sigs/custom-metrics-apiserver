@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"github.com/emicklei/go-restful/v3"
+	"github.com/stretchr/testify/assert"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -178,10 +179,11 @@ func handleExternalMetrics(prov provider.ExternalMetricsProvider) http.Handler {
 }
 
 type T struct {
-	Method        string
-	Path          string
-	Status        int
-	ExpectedCount int
+	Method         string
+	Path           string
+	Status         int
+	ExpectedCount  int
+	IsResourceList bool
 }
 
 func TestCustomMetricsAPI(t *testing.T) {
@@ -192,21 +194,23 @@ func TestCustomMetricsAPI(t *testing.T) {
 
 	cases := map[string]T{
 		// checks which should fail
-		"GET long prefix": {"GET", "/" + prefix + "/", http.StatusNotFound, 0},
+		"GET long prefix": {"GET", prefix + "/", http.StatusNotFound, 0, false},
 
-		"root GET missing storage": {"GET", "/" + prefix + "/" + customMetricsGroupVersion.Group + "/" + customMetricsGroupVersion.Version + "/blah", http.StatusNotFound, 0},
+		"root GET missing storage": {"GET", prefix + "/" + customMetricsGroupVersion.Group + "/" + customMetricsGroupVersion.Version + "/blah", http.StatusNotFound, 0, false},
 
-		"GET at root resource leaf":       {"GET", "/" + prefix + "/" + customMetricsGroupVersion.Group + "/" + customMetricsGroupVersion.Version + "/nodes/foo", http.StatusNotFound, 0},
-		"GET at namespaced resource leaf": {"GET", "/" + prefix + "/" + customMetricsGroupVersion.Group + "/" + customMetricsGroupVersion.Version + "/namespaces/ns/pods/bar", http.StatusNotFound, 0},
+		"GET at root resource leaf":       {"GET", prefix + "/" + customMetricsGroupVersion.Group + "/" + customMetricsGroupVersion.Version + "/nodes/foo", http.StatusNotFound, 0, false},
+		"GET at namespaced resource leaf": {"GET", prefix + "/" + customMetricsGroupVersion.Group + "/" + customMetricsGroupVersion.Version + "/namespaces/ns/pods/bar", http.StatusNotFound, 0, false},
 
 		// Positive checks to make sure everything is wired correctly
-		"GET for all nodes (root)":                 {"GET", "/" + prefix + "/" + customMetricsGroupVersion.Group + "/" + customMetricsGroupVersion.Version + "/nodes/*/some-metric", http.StatusOK, totalNodesCount},
-		"GET for all pods (namespaced)":            {"GET", "/" + prefix + "/" + customMetricsGroupVersion.Group + "/" + customMetricsGroupVersion.Version + "/namespaces/ns/pods/*/some-metric", http.StatusOK, totalPodsCount},
-		"GET for namespace":                        {"GET", "/" + prefix + "/" + customMetricsGroupVersion.Group + "/" + customMetricsGroupVersion.Version + "/namespaces/ns/metrics/some-metric", http.StatusOK, 1},
-		"GET for label selected nodes (root)":      {"GET", "/" + prefix + "/" + customMetricsGroupVersion.Group + "/" + customMetricsGroupVersion.Version + "/nodes/*/some-metric?labelSelector=foo%3Dbar", http.StatusOK, matchingNodesCount},
-		"GET for label selected pods (namespaced)": {"GET", "/" + prefix + "/" + customMetricsGroupVersion.Group + "/" + customMetricsGroupVersion.Version + "/namespaces/ns/pods/*/some-metric?labelSelector=foo%3Dbar", http.StatusOK, matchingPodsCount},
-		"GET for single node (root)":               {"GET", "/" + prefix + "/" + customMetricsGroupVersion.Group + "/" + customMetricsGroupVersion.Version + "/nodes/foo/some-metric", http.StatusOK, 1},
-		"GET for single pod (namespaced)":          {"GET", "/" + prefix + "/" + customMetricsGroupVersion.Group + "/" + customMetricsGroupVersion.Version + "/namespaces/ns/pods/foo/some-metric", http.StatusOK, 1},
+		"GET for all nodes (root)":                 {"GET", prefix + "/" + customMetricsGroupVersion.Group + "/" + customMetricsGroupVersion.Version + "/nodes/*/some-metric", http.StatusOK, totalNodesCount, false},
+		"GET for all pods (namespaced)":            {"GET", prefix + "/" + customMetricsGroupVersion.Group + "/" + customMetricsGroupVersion.Version + "/namespaces/ns/pods/*/some-metric", http.StatusOK, totalPodsCount, false},
+		"GET for namespace":                        {"GET", prefix + "/" + customMetricsGroupVersion.Group + "/" + customMetricsGroupVersion.Version + "/namespaces/ns/metrics/some-metric", http.StatusOK, 1, false},
+		"GET for label selected nodes (root)":      {"GET", prefix + "/" + customMetricsGroupVersion.Group + "/" + customMetricsGroupVersion.Version + "/nodes/*/some-metric?labelSelector=foo%3Dbar", http.StatusOK, matchingNodesCount, false},
+		"GET for label selected pods (namespaced)": {"GET", prefix + "/" + customMetricsGroupVersion.Group + "/" + customMetricsGroupVersion.Version + "/namespaces/ns/pods/*/some-metric?labelSelector=foo%3Dbar", http.StatusOK, matchingPodsCount, false},
+		"GET for single node (root)":               {"GET", prefix + "/" + customMetricsGroupVersion.Group + "/" + customMetricsGroupVersion.Version + "/nodes/foo/some-metric", http.StatusOK, 1, false},
+		"GET for single pod (namespaced)":          {"GET", prefix + "/" + customMetricsGroupVersion.Group + "/" + customMetricsGroupVersion.Version + "/namespaces/ns/pods/foo/some-metric", http.StatusOK, 1, false},
+
+		"GET all metrics": {"GET", prefix + "/" + customMetricsGroupVersion.Group + "/" + customMetricsGroupVersion.Version, http.StatusOK, 3, true},
 	}
 
 	scheme := runtime.NewScheme()
@@ -256,19 +260,19 @@ func TestCustomMetricsAPI(t *testing.T) {
 	client := http.Client{}
 	for k, v := range cases {
 		response, err := executeRequest(t, k, v, server, &client)
-		if err != nil {
-			t.Errorf(err.Error())
-			continue
-		}
-		if v.ExpectedCount > 0 {
-			lst := &cmv1beta1.MetricValueList{}
-			if err := extractBody(response, lst); err != nil {
-				t.Errorf("unexpected error (%s): %v", k, err)
-				continue
-			}
-			if len(lst.Items) != v.ExpectedCount {
-				t.Errorf("Expected %d items, got %d (%s): %#v", v.ExpectedCount, len(lst.Items), k, lst.Items)
-				continue
+		if assert.NoError(t, err) && v.ExpectedCount > 0 {
+			if v.IsResourceList {
+				lst := &metav1.APIResourceList{}
+				err := extractBody(response, lst)
+				if assert.NoErrorf(t, err, "unexpected error (%s)", k) {
+					assert.Equalf(t, v.ExpectedCount, len(lst.APIResources), "(%s)", k)
+				}
+			} else {
+				lst := &cmv1beta1.MetricValueList{}
+				err := extractBody(response, lst)
+				if assert.NoErrorf(t, err, "unexpected error (%s)", k) {
+					assert.Equalf(t, v.ExpectedCount, len(lst.Items), "(%s)", k)
+				}
 			}
 		}
 	}
@@ -277,16 +281,17 @@ func TestCustomMetricsAPI(t *testing.T) {
 func TestExternalMetricsAPI(t *testing.T) {
 	cases := map[string]T{
 		// checks which should fail
-
-		"GET long prefix":             {"GET", "/" + prefix + "/", http.StatusNotFound, 0},
-		"GET at root scope":           {"GET", "/" + prefix + "/" + externalMetricsGroupVersion.Group + "/" + externalMetricsGroupVersion.Version + "/nonexistent-metric", http.StatusNotFound, 0},
-		"GET without metric name":     {"GET", "/" + prefix + "/" + externalMetricsGroupVersion.Group + "/" + externalMetricsGroupVersion.Version + "/namespaces/foo", http.StatusNotFound, 0},
-		"GET for metric with slashes": {"GET", "/" + prefix + "/" + externalMetricsGroupVersion.Group + "/" + externalMetricsGroupVersion.Version + "/namespaces/foo/group/metric", http.StatusNotFound, 0},
+		"GET long prefix":             {"GET", prefix + "/", http.StatusNotFound, 0, false},
+		"GET at root scope":           {"GET", prefix + "/" + externalMetricsGroupVersion.Group + "/" + externalMetricsGroupVersion.Version + "/nonexistent-metric", http.StatusNotFound, 0, false},
+		"GET without metric name":     {"GET", prefix + "/" + externalMetricsGroupVersion.Group + "/" + externalMetricsGroupVersion.Version + "/namespaces/foo", http.StatusNotFound, 0, false},
+		"GET for metric with slashes": {"GET", prefix + "/" + externalMetricsGroupVersion.Group + "/" + externalMetricsGroupVersion.Version + "/namespaces/foo/group/metric", http.StatusNotFound, 0, false},
 
 		// Positive checks to make sure everything is wired correctly
-		"GET for external metric":               {"GET", "/" + prefix + "/" + externalMetricsGroupVersion.Group + "/" + externalMetricsGroupVersion.Version + "/namespaces/default/my-external-metric", http.StatusOK, 2},
-		"GET for external metric with selector": {"GET", "/" + prefix + "/" + externalMetricsGroupVersion.Group + "/" + externalMetricsGroupVersion.Version + "/namespaces/default/my-external-metric?labelSelector=foo%3Dbar", http.StatusOK, 1},
-		"GET for nonexistent metric":            {"GET", "/" + prefix + "/" + externalMetricsGroupVersion.Group + "/" + externalMetricsGroupVersion.Version + "/namespaces/foo/nonexistent-metric", http.StatusOK, 0},
+		"GET for external metric":               {"GET", prefix + "/" + externalMetricsGroupVersion.Group + "/" + externalMetricsGroupVersion.Version + "/namespaces/default/my-external-metric", http.StatusOK, 2, false},
+		"GET for external metric with selector": {"GET", prefix + "/" + externalMetricsGroupVersion.Group + "/" + externalMetricsGroupVersion.Version + "/namespaces/default/my-external-metric?labelSelector=foo%3Dbar", http.StatusOK, 1, false},
+		"GET for nonexistent metric":            {"GET", prefix + "/" + externalMetricsGroupVersion.Group + "/" + externalMetricsGroupVersion.Version + "/namespaces/foo/nonexistent-metric", http.StatusOK, 0, false},
+
+		"GET all metrics": {"GET", prefix + "/" + externalMetricsGroupVersion.Group + "/" + externalMetricsGroupVersion.Version, http.StatusOK, 3, true},
 	}
 
 	// "real" fake provider implementation can be used in test, because it doesn't have any dependencies.
@@ -298,19 +303,19 @@ func TestExternalMetricsAPI(t *testing.T) {
 	client := http.Client{}
 	for k, v := range cases {
 		response, err := executeRequest(t, k, v, server, &client)
-		if err != nil {
-			t.Errorf(err.Error())
-			continue
-		}
-		if v.ExpectedCount > 0 {
-			lst := &emv1beta1.ExternalMetricValueList{}
-			if err := extractBody(response, lst); err != nil {
-				t.Errorf("unexpected error (%s): %v", k, err)
-				continue
-			}
-			if len(lst.Items) != v.ExpectedCount {
-				t.Errorf("Expected %d items, got %d (%s): %#v", v.ExpectedCount, len(lst.Items), k, lst.Items)
-				continue
+		if assert.NoError(t, err) && v.ExpectedCount > 0 {
+			if v.IsResourceList {
+				lst := &metav1.APIResourceList{}
+				err := extractBody(response, lst)
+				if assert.NoErrorf(t, err, "unexpected error (%s)", k) {
+					assert.Equalf(t, v.ExpectedCount, len(lst.APIResources), "(%s)", k)
+				}
+			} else {
+				lst := &emv1beta1.ExternalMetricValueList{}
+				err := extractBody(response, lst)
+				if assert.NoErrorf(t, err, "unexpected error (%s)", k) {
+					assert.Equalf(t, v.ExpectedCount, len(lst.Items), "(%s)", k)
+				}
 			}
 		}
 	}
