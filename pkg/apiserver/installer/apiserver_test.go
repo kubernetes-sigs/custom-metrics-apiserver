@@ -17,7 +17,6 @@ limitations under the License.
 package installer
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -26,17 +25,21 @@ import (
 
 	"github.com/emicklei/go-restful/v3"
 
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
-	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	genericapi "k8s.io/apiserver/pkg/endpoints"
 	genericapifilters "k8s.io/apiserver/pkg/endpoints/filters"
 	genericapiserver "k8s.io/apiserver/pkg/server"
+	"k8s.io/client-go/dynamic/fake"
+	clienttesting "k8s.io/client-go/testing"
 	"k8s.io/metrics/pkg/apis/custom_metrics"
 	installcm "k8s.io/metrics/pkg/apis/custom_metrics/install"
 	cmv1beta1 "k8s.io/metrics/pkg/apis/custom_metrics/v1beta1"
@@ -174,77 +177,6 @@ func handleExternalMetrics(prov provider.ExternalMetricsProvider) http.Handler {
 	return handler
 }
 
-type fakeCMProvider struct {
-	rootValues             map[string][]custom_metrics.MetricValue
-	namespacedValues       map[string][]custom_metrics.MetricValue
-	rootSubsetCounts       map[string]int
-	namespacedSubsetCounts map[string]int
-	metrics                []provider.CustomMetricInfo
-}
-
-func (p *fakeCMProvider) valuesFor(name types.NamespacedName, info provider.CustomMetricInfo, metricSelector labels.Selector) (string, []custom_metrics.MetricValue, bool) {
-	if info.Namespaced {
-		metricID := name.Namespace + "/" + info.GroupResource.String() + "/" + name.Name + "/" + info.Metric
-		values, ok := p.namespacedValues[metricID]
-		return metricID, values, ok
-	}
-	metricID := info.GroupResource.String() + "/" + name.Name + "/" + info.Metric
-	values, ok := p.rootValues[metricID]
-	return metricID, values, ok
-}
-
-func (p *fakeCMProvider) GetMetricByName(ctx context.Context, name types.NamespacedName, info provider.CustomMetricInfo, metricSelector labels.Selector) (*custom_metrics.MetricValue, error) {
-	metricID, values, ok := p.valuesFor(name, info, metricSelector)
-	if !ok {
-		return nil, fmt.Errorf("non-existent metric requested (id: %s)", metricID)
-	}
-
-	return &values[0], nil
-}
-
-func (p *fakeCMProvider) GetMetricBySelector(ctx context.Context, namespace string, selector labels.Selector, info provider.CustomMetricInfo, metricSelector labels.Selector) (*custom_metrics.MetricValueList, error) {
-	metricID, values, ok := p.valuesFor(types.NamespacedName{Namespace: namespace, Name: "*"}, info, metricSelector)
-	if !ok {
-		return nil, fmt.Errorf("non-existent metric requested (id: %s)", metricID)
-	}
-
-	var trimmedValues custom_metrics.MetricValueList
-
-	var subsetCounts map[string]int
-	if info.Namespaced {
-		subsetCounts = p.namespacedSubsetCounts
-	} else {
-		subsetCounts = p.rootSubsetCounts
-	}
-
-	if trimmedCount, ok := subsetCounts[metricID]; ok {
-		trimmedValues = custom_metrics.MetricValueList{
-			Items: make([]custom_metrics.MetricValue, 0, trimmedCount),
-		}
-		for i := range values {
-			var lbls labels.Labels
-			if i < trimmedCount {
-				lbls = matchingSet
-			} else {
-				lbls = emptySet
-			}
-			if selector.Matches(lbls) {
-				trimmedValues.Items = append(trimmedValues.Items, custom_metrics.MetricValue{})
-			}
-		}
-	} else {
-		trimmedValues = custom_metrics.MetricValueList{
-			Items: values,
-		}
-	}
-
-	return &trimmedValues, nil
-}
-
-func (p *fakeCMProvider) ListAllMetrics() []provider.CustomMetricInfo {
-	return p.metrics
-}
-
 type T struct {
 	Method        string
 	Path          string
@@ -264,8 +196,8 @@ func TestCustomMetricsAPI(t *testing.T) {
 
 		"root GET missing storage": {"GET", "/" + prefix + "/" + customMetricsGroupVersion.Group + "/" + customMetricsGroupVersion.Version + "/blah", http.StatusNotFound, 0},
 
-		"GET at root resource leaf":        {"GET", "/" + prefix + "/" + customMetricsGroupVersion.Group + "/" + customMetricsGroupVersion.Version + "/nodes/foo", http.StatusNotFound, 0},
-		"GET at namespaced resource leaft": {"GET", "/" + prefix + "/" + customMetricsGroupVersion.Group + "/" + customMetricsGroupVersion.Version + "/namespaces/ns/pods/bar", http.StatusNotFound, 0},
+		"GET at root resource leaf":       {"GET", "/" + prefix + "/" + customMetricsGroupVersion.Group + "/" + customMetricsGroupVersion.Version + "/nodes/foo", http.StatusNotFound, 0},
+		"GET at namespaced resource leaf": {"GET", "/" + prefix + "/" + customMetricsGroupVersion.Group + "/" + customMetricsGroupVersion.Version + "/namespaces/ns/pods/bar", http.StatusNotFound, 0},
 
 		// Positive checks to make sure everything is wired correctly
 		"GET for all nodes (root)":                 {"GET", "/" + prefix + "/" + customMetricsGroupVersion.Group + "/" + customMetricsGroupVersion.Version + "/nodes/*/some-metric", http.StatusOK, totalNodesCount},
@@ -277,24 +209,47 @@ func TestCustomMetricsAPI(t *testing.T) {
 		"GET for single pod (namespaced)":          {"GET", "/" + prefix + "/" + customMetricsGroupVersion.Group + "/" + customMetricsGroupVersion.Version + "/namespaces/ns/pods/foo/some-metric", http.StatusOK, 1},
 	}
 
-	prov := &fakeCMProvider{
-		rootValues: map[string][]custom_metrics.MetricValue{
-			"nodes/*/some-metric":       make([]custom_metrics.MetricValue, totalNodesCount),
-			"nodes/foo/some-metric":     make([]custom_metrics.MetricValue, 1),
-			"namespaces/ns/some-metric": make([]custom_metrics.MetricValue, 1),
-		},
-		namespacedValues: map[string][]custom_metrics.MetricValue{
-			"ns/pods/*/some-metric":   make([]custom_metrics.MetricValue, totalPodsCount),
-			"ns/pods/foo/some-metric": make([]custom_metrics.MetricValue, 1),
-		},
-
-		rootSubsetCounts: map[string]int{
-			"nodes/*/some-metric": matchingNodesCount,
-		},
-		namespacedSubsetCounts: map[string]int{
-			"ns/pods/*/some-metric": matchingPodsCount,
-		},
+	scheme := runtime.NewScheme()
+	err := corev1.AddToScheme(scheme)
+	if err != nil {
+		t.Fatal(err)
 	}
+	dynClient := fake.NewSimpleDynamicClient(scheme)
+	dynClient.PrependReactor("list", "*", func(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
+		var items []unstructured.Unstructured
+		switch action.GetResource().Resource {
+		case "nodes":
+			items = make([]unstructured.Unstructured, totalNodesCount)
+			for i := 0; i < totalNodesCount; i++ {
+				items[i].SetName("*")
+				if i < matchingNodesCount {
+					items[i].SetLabels(matchingSet)
+				}
+			}
+		case "pods":
+			items = make([]unstructured.Unstructured, totalPodsCount)
+			for i := 0; i < totalPodsCount; i++ {
+				items[i].SetName("*")
+				if i < matchingPodsCount {
+					items[i].SetLabels(matchingSet)
+				}
+			}
+		default:
+			return false, nil, nil
+		}
+		return true, &unstructured.UnstructuredList{Items: items}, nil
+	})
+	mapper := meta.NewDefaultRESTMapper([]schema.GroupVersion{})
+	mapper.Add(schema.FromAPIVersionAndKind("v1", "Node"), meta.RESTScopeRoot)
+	mapper.Add(schema.FromAPIVersionAndKind("v1", "Pod"), meta.RESTScopeNamespace)
+	mapper.Add(schema.FromAPIVersionAndKind("v1", "Namespace"), meta.RESTScopeRoot)
+
+	prov, _ := sampleprovider.NewFakeProvider(dynClient, mapper)
+	prov.UpdateMetric("", "nodes", "foo", "some-metric", resource.NewMilliQuantity(300, resource.DecimalSI), emptySet)
+	prov.UpdateMetric("", "nodes", "*", "some-metric", resource.NewMilliQuantity(300, resource.DecimalSI), emptySet)
+	prov.UpdateMetric("ns", "pods", "foo", "some-metric", resource.NewMilliQuantity(300, resource.DecimalSI), emptySet)
+	prov.UpdateMetric("ns", "pods", "*", "some-metric", resource.NewMilliQuantity(300, resource.DecimalSI), emptySet)
+	prov.UpdateMetric("", "namespaces", "ns", "some-metric", resource.NewMilliQuantity(300, resource.DecimalSI), emptySet)
 
 	server := httptest.NewServer(handleCustomMetrics(prov))
 	defer server.Close()

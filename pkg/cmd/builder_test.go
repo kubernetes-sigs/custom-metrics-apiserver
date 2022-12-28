@@ -21,9 +21,14 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/dynamic/fake"
 	"k8s.io/kube-openapi/pkg/builder"
 
-	"sigs.k8s.io/custom-metrics-apiserver/pkg/provider/fake"
+	"sigs.k8s.io/custom-metrics-apiserver/pkg/provider"
+	sampleprovider "sigs.k8s.io/custom-metrics-apiserver/test-adapter/provider"
 )
 
 func TestDefaultOpenAPIConfig(t *testing.T) {
@@ -41,8 +46,9 @@ func TestDefaultOpenAPIConfig(t *testing.T) {
 	t.Run("custom and external metrics", func(t *testing.T) {
 		adapter := &AdapterBase{}
 
-		adapter.WithCustomMetrics(fake.NewProvider())
-		adapter.WithExternalMetrics(fake.NewProvider())
+		prov := newFakeProvider()
+		adapter.WithCustomMetrics(prov)
+		adapter.WithExternalMetrics(prov)
 
 		config := adapter.defaultOpenAPIConfig()
 
@@ -52,4 +58,11 @@ func TestDefaultOpenAPIConfig(t *testing.T) {
 		_, err2 := builder.BuildOpenAPIDefinitionsForResources(config, "k8s.io/metrics/pkg/apis/external_metrics/v1beta1.ExternalMetricValue")
 		assert.NoError(t, err2)
 	})
+}
+
+func newFakeProvider() provider.MetricsProvider {
+	dynClient := fake.NewSimpleDynamicClient(runtime.NewScheme())
+	mapper := meta.NewDefaultRESTMapper([]schema.GroupVersion{})
+	prov, _ := sampleprovider.NewFakeProvider(dynClient, mapper)
+	return prov
 }
