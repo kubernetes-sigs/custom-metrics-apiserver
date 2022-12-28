@@ -103,6 +103,13 @@ type metricValue struct {
 
 var _ provider.MetricsProvider = &testingProvider{}
 
+// TestingProvider is a provider.MetricsProvider that can be used in tests.
+type TestingProvider interface {
+	provider.MetricsProvider
+
+	UpdateMetric(namespace string, resourceType string, name string, metricName string, value *resource.Quantity, metricLabels labels.Set)
+}
+
 // testingProvider is a sample implementation of provider.MetricsProvider which stores a map of fake metrics
 type testingProvider struct {
 	client dynamic.Interface
@@ -113,8 +120,8 @@ type testingProvider struct {
 	externalMetrics []externalMetric
 }
 
-// NewFakeProvider returns an instance of testingProvider, along with its restful.WebService that opens endpoints to post new fake metrics
-func NewFakeProvider(client dynamic.Interface, mapper apimeta.RESTMapper) (provider.MetricsProvider, *restful.WebService) {
+// NewFakeProvider returns an instance of TestingProvider, along with its restful.WebService that opens endpoints to post new fake metrics.
+func NewFakeProvider(client dynamic.Interface, mapper apimeta.RESTMapper) (TestingProvider, *restful.WebService) {
 	provider := &testingProvider{
 		client:          client,
 		mapper:          mapper,
@@ -134,30 +141,23 @@ func (p *testingProvider) webService() *restful.WebService {
 	ws.Path("/write-metrics")
 
 	// Namespaced resources
-	ws.Route(ws.POST("/namespaces/{namespace}/{resourceType}/{name}/{metric}").To(p.updateMetric).
+	ws.Route(ws.POST("/namespaces/{namespace}/{resourceType}/{name}/{metric}").To(p.handleUpdateMetricRequest).
 		Param(ws.BodyParameter("value", "value to set metric").DataType("integer").DefaultValue("0")))
 
 	// Root-scoped resources
-	ws.Route(ws.POST("/{resourceType}/{name}/{metric}").To(p.updateMetric).
+	ws.Route(ws.POST("/{resourceType}/{name}/{metric}").To(p.handleUpdateMetricRequest).
 		Param(ws.BodyParameter("value", "value to set metric").DataType("integer").DefaultValue("0")))
 
 	// Namespaces, where {resourceType} == "namespaces" to match API
-	ws.Route(ws.POST("/{resourceType}/{name}/metrics/{metric}").To(p.updateMetric).
+	ws.Route(ws.POST("/{resourceType}/{name}/metrics/{metric}").To(p.handleUpdateMetricRequest).
 		Param(ws.BodyParameter("value", "value to set metric").DataType("integer").DefaultValue("0")))
 	return ws
 }
 
-// updateMetric writes the metric provided by a restful request and stores it in memory
-func (p *testingProvider) updateMetric(request *restful.Request, response *restful.Response) {
-	p.valuesLock.Lock()
-	defer p.valuesLock.Unlock()
-
+// handleUpdateMetricRequest writes the metric provided by a restful request and stores it in memory
+func (p *testingProvider) handleUpdateMetricRequest(request *restful.Request, response *restful.Response) {
 	namespace := request.PathParameter("namespace")
 	resourceType := request.PathParameter("resourceType")
-	namespaced := false
-	if len(namespace) > 0 || resourceType == "namespaces" {
-		namespaced = true
-	}
 	name := request.PathParameter("name")
 	metricName := request.PathParameter("metric")
 
@@ -169,8 +169,6 @@ func (p *testingProvider) updateMetric(request *restful.Request, response *restf
 		}
 		return
 	}
-
-	groupResource := schema.ParseGroupResource(resourceType)
 
 	metricLabels := labels.Set{}
 	sel := request.QueryParameter("labels")
@@ -184,13 +182,22 @@ func (p *testingProvider) updateMetric(request *restful.Request, response *restf
 		}
 	}
 
+	p.UpdateMetric(namespace, resourceType, name, metricName, value, metricLabels)
+}
+
+func (p *testingProvider) UpdateMetric(namespace string, resourceType string, name string, metricName string, value *resource.Quantity, metricLabels labels.Set) {
+	p.valuesLock.Lock()
+	defer p.valuesLock.Unlock()
+
+	groupResource := schema.ParseGroupResource(resourceType)
+
 	info := provider.CustomMetricInfo{
 		GroupResource: groupResource,
 		Metric:        metricName,
-		Namespaced:    namespaced,
+		Namespaced:    namespace != "",
 	}
 
-	info, _, err = info.Normalized(p.mapper)
+	info, _, err := info.Normalized(p.mapper)
 	if err != nil {
 		klog.Errorf("Error normalizing info: %s", err)
 	}
