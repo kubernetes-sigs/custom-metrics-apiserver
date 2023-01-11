@@ -33,12 +33,15 @@ pkg/generated/openapi/%/zz_generated.openapi.go: go.mod go.sum
 	    -o ./ \
 	    -r /dev/null
 
+.PHONY: update-generated
+update-generated: $(generated_files)
+
 
 # Build
 # -----
 
 .PHONY: build-test-adapter
-build-test-adapter: $(generated_files)
+build-test-adapter: update-generated
 	CGO_ENABLED=0 GOOS=linux GOARCH=$(ARCH) go build -o $(OUT_DIR)/$(ARCH)/test-adapter sigs.k8s.io/custom-metrics-apiserver/test-adapter
 
 
@@ -84,13 +87,17 @@ endif
 # ------
 
 .PHONY: verify
-verify: verify-deps verify-lint verify-licenses
+verify: verify-deps verify-lint verify-licenses verify-generated
 
 .PHONY: verify-deps
 verify-deps:
 	go mod verify
 	go mod tidy
 	@git diff --exit-code -- go.sum go.mod
+
+.PHONY: verify-generated
+verify-generated: update-generated
+	@git diff --exit-code -- $(generated_files)
 
 
 # Test
