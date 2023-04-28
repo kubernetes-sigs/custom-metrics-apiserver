@@ -30,11 +30,11 @@ import (
 
 type fakeProvider struct{}
 
-func (*fakeProvider) GetMetricByName(ctx context.Context, name types.NamespacedName, info provider.CustomMetricInfo, metricSelector labels.Selector) (*custom_metrics.MetricValue, error) {
+func (*fakeProvider) GetMetricByName(_ context.Context, _ types.NamespacedName, _ provider.CustomMetricInfo, _ labels.Selector) (*custom_metrics.MetricValue, error) {
 	return &custom_metrics.MetricValue{}, nil
 }
 
-func (*fakeProvider) GetMetricBySelector(ctx context.Context, namespace string, selector labels.Selector, info provider.CustomMetricInfo, metricSelector labels.Selector) (*custom_metrics.MetricValueList, error) {
+func (*fakeProvider) GetMetricBySelector(_ context.Context, _ string, _ labels.Selector, _ provider.CustomMetricInfo, _ labels.Selector) (*custom_metrics.MetricValueList, error) {
 	return &custom_metrics.MetricValueList{}, nil
 }
 
@@ -42,7 +42,7 @@ func (*fakeProvider) ListAllMetrics() []provider.CustomMetricInfo {
 	return []provider.CustomMetricInfo{}
 }
 
-func (*fakeProvider) GetExternalMetric(ctx context.Context, namespace string, metricSelector labels.Selector, info provider.ExternalMetricInfo) (*external_metrics.ExternalMetricValueList, error) {
+func (*fakeProvider) GetExternalMetric(_ context.Context, _ string, _ labels.Selector, _ provider.ExternalMetricInfo) (*external_metrics.ExternalMetricValueList, error) {
 	return &external_metrics.ExternalMetricValueList{}, nil
 }
 
