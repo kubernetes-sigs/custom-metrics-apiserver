@@ -35,6 +35,7 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	"sigs.k8s.io/custom-metrics-apiserver/pkg/provider"
+	"sigs.k8s.io/custom-metrics-apiserver/pkg/provider/defaults"
 	"sigs.k8s.io/custom-metrics-apiserver/pkg/provider/helpers"
 )
 
@@ -105,6 +106,8 @@ var _ provider.MetricsProvider = &testingProvider{}
 
 // testingProvider is a sample implementation of provider.MetricsProvider which stores a map of fake metrics
 type testingProvider struct {
+	defaults.DefaultCustomMetricsProvider
+	defaults.DefaultExternalMetricsProvider
 	client dynamic.Interface
 	mapper apimeta.RESTMapper
 
@@ -308,25 +311,6 @@ func (p *testingProvider) GetMetricBySelector(_ context.Context, namespace strin
 	return p.metricsFor(namespace, selector, info, metricSelector)
 }
 
-func (p *testingProvider) ListAllMetrics() []provider.CustomMetricInfo {
-	p.valuesLock.RLock()
-	defer p.valuesLock.RUnlock()
-
-	// Get unique CustomMetricInfos from wrapper CustomMetricResources
-	infos := make(map[provider.CustomMetricInfo]struct{})
-	for resource := range p.values {
-		infos[resource.CustomMetricInfo] = struct{}{}
-	}
-
-	// Build slice of CustomMetricInfos to be returns
-	metrics := make([]provider.CustomMetricInfo, 0, len(infos))
-	for info := range infos {
-		metrics = append(metrics, info)
-	}
-
-	return metrics
-}
-
 func (p *testingProvider) GetExternalMetric(_ context.Context, _ string, metricSelector labels.Selector, info provider.ExternalMetricInfo) (*external_metrics.ExternalMetricValueList, error) {
 	p.valuesLock.RLock()
 	defer p.valuesLock.RUnlock()
@@ -343,15 +327,4 @@ func (p *testingProvider) GetExternalMetric(_ context.Context, _ string, metricS
 	return &external_metrics.ExternalMetricValueList{
 		Items: matchingMetrics,
 	}, nil
-}
-
-func (p *testingProvider) ListAllExternalMetrics() []provider.ExternalMetricInfo {
-	p.valuesLock.RLock()
-	defer p.valuesLock.RUnlock()
-
-	externalMetricsInfo := []provider.ExternalMetricInfo{}
-	for _, metric := range p.externalMetrics {
-		externalMetricsInfo = append(externalMetricsInfo, metric.info)
-	}
-	return externalMetricsInfo
 }
