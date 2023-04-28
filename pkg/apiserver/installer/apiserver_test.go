@@ -182,7 +182,7 @@ type fakeCMProvider struct {
 	metrics                []provider.CustomMetricInfo
 }
 
-func (p *fakeCMProvider) valuesFor(name types.NamespacedName, info provider.CustomMetricInfo, metricSelector labels.Selector) (string, []custom_metrics.MetricValue, bool) {
+func (p *fakeCMProvider) valuesFor(name types.NamespacedName, info provider.CustomMetricInfo) (string, []custom_metrics.MetricValue, bool) {
 	if info.Namespaced {
 		metricID := name.Namespace + "/" + info.GroupResource.String() + "/" + name.Name + "/" + info.Metric
 		values, ok := p.namespacedValues[metricID]
@@ -193,8 +193,8 @@ func (p *fakeCMProvider) valuesFor(name types.NamespacedName, info provider.Cust
 	return metricID, values, ok
 }
 
-func (p *fakeCMProvider) GetMetricByName(ctx context.Context, name types.NamespacedName, info provider.CustomMetricInfo, metricSelector labels.Selector) (*custom_metrics.MetricValue, error) {
-	metricID, values, ok := p.valuesFor(name, info, metricSelector)
+func (p *fakeCMProvider) GetMetricByName(_ context.Context, name types.NamespacedName, info provider.CustomMetricInfo, _ labels.Selector) (*custom_metrics.MetricValue, error) {
+	metricID, values, ok := p.valuesFor(name, info)
 	if !ok {
 		return nil, fmt.Errorf("non-existent metric requested (id: %s)", metricID)
 	}
@@ -202,8 +202,8 @@ func (p *fakeCMProvider) GetMetricByName(ctx context.Context, name types.Namespa
 	return &values[0], nil
 }
 
-func (p *fakeCMProvider) GetMetricBySelector(ctx context.Context, namespace string, selector labels.Selector, info provider.CustomMetricInfo, metricSelector labels.Selector) (*custom_metrics.MetricValueList, error) {
-	metricID, values, ok := p.valuesFor(types.NamespacedName{Namespace: namespace, Name: "*"}, info, metricSelector)
+func (p *fakeCMProvider) GetMetricBySelector(_ context.Context, namespace string, selector labels.Selector, info provider.CustomMetricInfo, _ labels.Selector) (*custom_metrics.MetricValueList, error) {
+	metricID, values, ok := p.valuesFor(types.NamespacedName{Namespace: namespace, Name: "*"}, info)
 	if !ok {
 		return nil, fmt.Errorf("non-existent metric requested (id: %s)", metricID)
 	}

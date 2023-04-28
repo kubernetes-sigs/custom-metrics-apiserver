@@ -234,7 +234,7 @@ func (p *testingProvider) valueFor(info provider.CustomMetricInfo, name types.Na
 }
 
 // metricFor is a helper function which formats a value, metric, and object info into a MetricValue which can be returned by the metrics API
-func (p *testingProvider) metricFor(value metricValue, name types.NamespacedName, selector labels.Selector, info provider.CustomMetricInfo, metricSelector labels.Selector) (*custom_metrics.MetricValue, error) {
+func (p *testingProvider) metricFor(value metricValue, name types.NamespacedName, _ labels.Selector, info provider.CustomMetricInfo, metricSelector labels.Selector) (*custom_metrics.MetricValue, error) {
 	objRef, err := helpers.ReferenceFor(p.mapper, name, info)
 	if err != nil {
 		return nil, err
@@ -290,7 +290,7 @@ func (p *testingProvider) metricsFor(namespace string, selector labels.Selector,
 	}, nil
 }
 
-func (p *testingProvider) GetMetricByName(ctx context.Context, name types.NamespacedName, info provider.CustomMetricInfo, metricSelector labels.Selector) (*custom_metrics.MetricValue, error) {
+func (p *testingProvider) GetMetricByName(_ context.Context, name types.NamespacedName, info provider.CustomMetricInfo, metricSelector labels.Selector) (*custom_metrics.MetricValue, error) {
 	p.valuesLock.RLock()
 	defer p.valuesLock.RUnlock()
 
@@ -301,7 +301,7 @@ func (p *testingProvider) GetMetricByName(ctx context.Context, name types.Namesp
 	return p.metricFor(value, name, labels.Everything(), info, metricSelector)
 }
 
-func (p *testingProvider) GetMetricBySelector(ctx context.Context, namespace string, selector labels.Selector, info provider.CustomMetricInfo, metricSelector labels.Selector) (*custom_metrics.MetricValueList, error) {
+func (p *testingProvider) GetMetricBySelector(_ context.Context, namespace string, selector labels.Selector, info provider.CustomMetricInfo, metricSelector labels.Selector) (*custom_metrics.MetricValueList, error) {
 	p.valuesLock.RLock()
 	defer p.valuesLock.RUnlock()
 
@@ -327,7 +327,7 @@ func (p *testingProvider) ListAllMetrics() []provider.CustomMetricInfo {
 	return metrics
 }
 
-func (p *testingProvider) GetExternalMetric(ctx context.Context, namespace string, metricSelector labels.Selector, info provider.ExternalMetricInfo) (*external_metrics.ExternalMetricValueList, error) {
+func (p *testingProvider) GetExternalMetric(_ context.Context, _ string, metricSelector labels.Selector, info provider.ExternalMetricInfo) (*external_metrics.ExternalMetricValueList, error) {
 	p.valuesLock.RLock()
 	defer p.valuesLock.RUnlock()
 
