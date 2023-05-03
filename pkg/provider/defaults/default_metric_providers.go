@@ -26,7 +26,7 @@ type DefaultExternalMetricsProvider struct{}
 func (em DefaultExternalMetricsProvider) ListAllExternalMetrics() []provider.ExternalMetricInfo {
 	return []provider.ExternalMetricInfo{
 		{
-			Metric: "externalmetric",
+			Metric: "externalmetrics",
 		},
 	}
 }
@@ -36,7 +36,7 @@ type DefaultCustomMetricsProvider struct{}
 func (cm DefaultCustomMetricsProvider) ListAllMetrics() []provider.CustomMetricInfo {
 	return []provider.CustomMetricInfo{
 		{
-			Metric: "custommetric",
+			Metric: "custommetrics",
 		},
 	}
 }
