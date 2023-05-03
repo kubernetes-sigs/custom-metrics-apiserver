@@ -56,6 +56,7 @@ import (
     "k8s.io/metrics/pkg/apis/custom_metrics"
 
     "sigs.k8s.io/custom-metrics-apiserver/pkg/provider"
+    "sigs.k8s.io/custom-metrics-apiserver/pkg/provider/defaults"
     "sigs.k8s.io/custom-metrics-apiserver/pkg/provider/helpers"
 )
 ```
@@ -76,35 +77,14 @@ type CustomMetricsProvider interface {
 First, there's a method for listing all metrics available at any point in
 time.  It's used to populate the discovery information in the API, so that
 clients can know what metrics are available.  It's not allowed to fail (it
-doesn't return any error), and it should return quickly, so it's suggested
-that you update it asynchronously in real-world code.
+doesn't return any error), and it should return quickly. 
 
-For this walkthrough, you can just return a few statically-named metrics,
-two that are namespaced, and one that's on namespaces themselves, and thus
-root-scoped:
-
-```go
-func (p *yourProvider) ListAllMetrics() []provider.CustomMetricInfo {
-    return []provider.CustomMetricInfo{
-        // these are mostly arbitrary examples
-        {
-            GroupResource: schema.GroupResource{Group: "", Resource: "pods"},
-            Metric:        "packets-per-second",
-            Namespaced:    true,
-        },
-        {
-            GroupResource: schema.GroupResource{Group: "", Resource: "services"},
-            Metric:        "connections-per-second",
-            Namespaced:    true,
-        },
-        {
-            GroupResource: schema.GroupResource{Group: "", Resource: "namespaces"},
-            Metric:        "work-queue-length",
-            Namespaced:    false,
-        },
-    }
-}
-```
+You can list your metrics (asynchronously) and return them on every request.
+This is not mandatory because kubernetes can request metric values without 
+listing them before, but maybe there are some cases where is useful. To 
+provide a unified solution, a default implementation is provided thanks to
+`DefaultCustomMetricsProvider` (and `DefaultExternalMetricsProvider` for 
+external metrics)
 
 Next, you'll need to implement the methods that actually fetch the
 metrics. There are methods for fetching metrics describing arbitrary Kubernetes
@@ -189,6 +169,8 @@ already have sufficient information in your metrics pipeline:
 
 ```go
 type yourProvider struct {
+    defaults.DefaultCustomMetricsProvider
+    defaults.DefaultExternalMetricsProvider
     client dynamic.Interface
     mapper apimeta.RESTMapper
 

@@ -45,6 +45,7 @@ import (
 	emv1beta1 "k8s.io/metrics/pkg/apis/external_metrics/v1beta1"
 
 	"sigs.k8s.io/custom-metrics-apiserver/pkg/provider"
+	"sigs.k8s.io/custom-metrics-apiserver/pkg/provider/defaults"
 	custommetricstorage "sigs.k8s.io/custom-metrics-apiserver/pkg/registry/custom_metrics"
 	externalmetricstorage "sigs.k8s.io/custom-metrics-apiserver/pkg/registry/external_metrics"
 	sampleprovider "sigs.k8s.io/custom-metrics-apiserver/test-adapter/provider"
@@ -179,7 +180,8 @@ type fakeCMProvider struct {
 	namespacedValues       map[string][]custom_metrics.MetricValue
 	rootSubsetCounts       map[string]int
 	namespacedSubsetCounts map[string]int
-	metrics                []provider.CustomMetricInfo
+
+	defaults.DefaultCustomMetricsProvider
 }
 
 func (p *fakeCMProvider) valuesFor(name types.NamespacedName, info provider.CustomMetricInfo) (string, []custom_metrics.MetricValue, bool) {
@@ -239,10 +241,6 @@ func (p *fakeCMProvider) GetMetricBySelector(_ context.Context, namespace string
 	}
 
 	return &trimmedValues, nil
-}
-
-func (p *fakeCMProvider) ListAllMetrics() []provider.CustomMetricInfo {
-	return p.metrics
 }
 
 type T struct {

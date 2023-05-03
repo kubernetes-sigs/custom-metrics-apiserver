@@ -26,9 +26,13 @@ import (
 	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	"sigs.k8s.io/custom-metrics-apiserver/pkg/provider"
+	"sigs.k8s.io/custom-metrics-apiserver/pkg/provider/defaults"
 )
 
-type fakeProvider struct{}
+type fakeProvider struct {
+	defaults.DefaultCustomMetricsProvider
+	defaults.DefaultExternalMetricsProvider
+}
 
 func (*fakeProvider) GetMetricByName(_ context.Context, _ types.NamespacedName, _ provider.CustomMetricInfo, _ labels.Selector) (*custom_metrics.MetricValue, error) {
 	return &custom_metrics.MetricValue{}, nil
@@ -38,16 +42,8 @@ func (*fakeProvider) GetMetricBySelector(_ context.Context, _ string, _ labels.S
 	return &custom_metrics.MetricValueList{}, nil
 }
 
-func (*fakeProvider) ListAllMetrics() []provider.CustomMetricInfo {
-	return []provider.CustomMetricInfo{}
-}
-
 func (*fakeProvider) GetExternalMetric(_ context.Context, _ string, _ labels.Selector, _ provider.ExternalMetricInfo) (*external_metrics.ExternalMetricValueList, error) {
 	return &external_metrics.ExternalMetricValueList{}, nil
-}
-
-func (*fakeProvider) ListAllExternalMetrics() []provider.ExternalMetricInfo {
-	return []provider.ExternalMetricInfo{}
 }
 
 // NewProvider creates a fake implementation of MetricsProvider.
