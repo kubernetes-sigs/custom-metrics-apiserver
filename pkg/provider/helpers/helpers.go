@@ -84,7 +84,7 @@ func ListObjectNames(mapper apimeta.RESTMapper, client dynamic.Interface, namesp
 		resClient = client.Resource(res)
 	}
 
-	matchingObjectsRaw, err := resClient.List(context.TODO(), metav1.ListOptions{LabelSelector: selector.String()})
+	matchingObjectsRaw, err := resClient.List(context.TODO(), metav1.ListOptions{LabelSelector: selector.String(), ResourceVersion: "0"})
 	if err != nil {
 		return nil, err
 	}
