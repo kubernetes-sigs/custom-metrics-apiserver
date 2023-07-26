@@ -264,10 +264,6 @@ func (b *AdapterBase) defaultOpenAPIConfig() *openapicommon.Config {
 	return b.openAPIConfig(genericapiserver.DefaultOpenAPIConfig)
 }
 
-func (b *AdapterBase) defaultOpenAPIV3Config() *openapicommon.Config {
-	return b.openAPIConfig(genericapiserver.DefaultOpenAPIV3Config)
-}
-
 // Config fetches the configuration used to ultimately create the custom metrics adapter's
 // API server.  While this method is idempotent, it does "cement" values of some of the other
 // fields, so make sure to only call it just before `Server` or `Run`.
@@ -280,12 +276,13 @@ func (b *AdapterBase) Config() (*apiserver.Config, error) {
 			b.Name = "custom-metrics-adapter"
 		}
 
-		if b.OpenAPIConfig == nil {
+		// default to use the openapi config
+		if b.OpenAPIConfig == nil && b.OpenAPIV3Config == nil {
 			b.OpenAPIConfig = b.defaultOpenAPIConfig()
 		}
 		b.CustomMetricsAdapterServerOptions.OpenAPIConfig = b.OpenAPIConfig
-		if b.OpenAPIV3Config == nil && utilfeature.DefaultFeatureGate.Enabled(features.OpenAPIV3) {
-			b.OpenAPIV3Config = b.defaultOpenAPIV3Config()
+		if utilfeature.DefaultFeatureGate.Enabled(features.OpenAPIV3) {
+			b.CustomMetricsAdapterServerOptions.OpenAPIV3Config = b.OpenAPIV3Config
 		}
 
 		if errList := b.CustomMetricsAdapterServerOptions.Validate(); len(errList) > 0 {
