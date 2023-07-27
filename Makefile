@@ -125,7 +125,7 @@ verify-generated: update-generated
 
 .PHONY: test
 test:
-	CGO_ENABLED=0 go test ./pkg/...
+	CGO_ENABLED=0 go test ./...
 
 .PHONY: test-adapter-container
 test-adapter-container: build-test-adapter

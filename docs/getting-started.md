@@ -19,7 +19,7 @@ $ go get sigs.k8s.io/custom-metrics-apiserver@latest
 
 ## Writing the Code
 
-There's two parts to an adapter: the setup code, and the providers.  The
+There's two parts to an adapter: the setup code, and the providers. The
 setup code initializes the API server, and the providers handle requests
 from the API for metrics.
 
@@ -39,7 +39,7 @@ Put your provider in the `pkg/provider` directory in your repository.
 
 <summary>To get started, you&#39;ll need some imports:</summary>
 
-```go
+```go mdox-exec="go run ./hack/snippets -d package,import docs/sample-adapter/pkg/provider/provider.go"
 package provider
 
 import (
@@ -50,7 +50,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/metrics/pkg/apis/custom_metrics"
@@ -108,7 +107,8 @@ often see references to resources, kinds, and scope.
 Kinds refer to types within the API. For instance, `Deployment` is
 a kind. When you fully-qualify a kind, you write it as
 a *group-version-kind*, or *GVK* for short. The GVK for `Deployment` is
-`apps/v1.Deployment` (or `{Group: "apps", Version: "v1", Kind: "Deployment"}` in Go syntax).
+`apps/v1.Deployment` (or `{Group: "apps", Version: "v1", Kind: "Deployment"}` in
+Go syntax).
 
 Resources refer to URLs in an API, in an abstract sense. Each resource
 has a corresponding kind, but that kind isn't necessarily unique to that
@@ -116,8 +116,9 @@ particular resource. For instance, the resource `deployments` has kind
 `Deployment`, but so does the subresource `deployments/status`. On the
 other hand, all the `*/scale` subresources use the kind `Scale` (for the
 most part). When you fully-qualify a resource, you write it as
-a *group-version-resource*, or GVR for short. The GVR `{Group: "apps", Version: "v1", Resource: "deployments"}` corresponds to the URL form
-`/apis/apps/v1/namespaces/<ns>/deployments`. Resources may be singular or
+a *group-version-resource*, or GVR for short. The GVR
+`{Group: "apps", Version: "v1", Resource: "deployments"}` corresponds to the URL
+form `/apis/apps/v1/namespaces/<ns>/deployments`. Resources may be singular or
 plural -- both effectively refer to the same thing.
 
 Sometimes you might partially qualify a particular kind or resource as
@@ -148,7 +149,8 @@ down the thousandths place.
 
 For instance, `10500m` means `10.5` in decimal notation. To construct
 a new quantity out of a milli-unit value (e.g. millicores or millimeters),
-you'd use the `resource.NewMilliQuantity(valueInMilliUnits, resource.DecimalSI)` function. To construct a new quantity that's a whole
+you'd use the `resource.NewMilliQuantity(valueInMilliUnits, resource.DecimalSI)`
+function. To construct a new quantity that's a whole
 number, you can either use `NewMilliQuantity` and multiple by `1000`, or
 use the `resource.NewQuantity(valueInWholeUnits, resource.DecimalSI)`
 function.
@@ -165,10 +167,11 @@ You'll need a handle to a RESTMapper (to map between resources and kinds)
 and dynamic client to fetch lists of objects in the cluster, if you don't
 already have sufficient information in your metrics pipeline:
 
-```go
+```go mdox-exec="go run ./hack/snippets -d type=yourProvider,func=NewProvider docs/sample-adapter/pkg/provider/provider.go"
 type yourProvider struct {
 	defaults.DefaultCustomMetricsProvider
 	defaults.DefaultExternalMetricsProvider
+
 	client dynamic.Interface
 	mapper apimeta.RESTMapper
 
@@ -193,7 +196,7 @@ backend in these methods.
 First, a couple of helpers, which support doing the fake "fetch"
 operation, and constructing a result object:
 
-```go
+```go mdox-exec="go run ./hack/snippets -d func=*yourProvider.valueFor,func=*yourProvider.metricFor docs/sample-adapter/pkg/provider/provider.go"
 // valueFor fetches a value from the fake list and increments it.
 func (p *yourProvider) valueFor(info provider.CustomMetricInfo) (int64, error) {
 	// normalize the value so that you treat plural resources and singular
@@ -204,7 +207,7 @@ func (p *yourProvider) valueFor(info provider.CustomMetricInfo) (int64, error) {
 	}
 
 	value := p.values[info]
-	value += 1
+	value++
 	p.values[info] = value
 
 	return value, nil
@@ -224,7 +227,7 @@ func (p *yourProvider) metricFor(value int64, name types.NamespacedName, info pr
 			Name: info.Metric,
 		},
 		// you'll want to use the actual timestamp in a real adapter
-		Timestamp: metav1.Time{time.Now()},
+		Timestamp: metav1.Time{Time: time.Now()},
 		Value:     *resource.NewMilliQuantity(value*100, resource.DecimalSI),
 	}, nil
 }
@@ -234,8 +237,8 @@ Then, you'll need to implement the two main methods. The first fetches
 a single metric value for one object (for example, for the `object` metric
 type in the HorizontalPodAutoscaler):
 
-```go
-func (p *yourProvider) GetMetricByName(ctx context.Context, name types.NamespacedName, info provider.CustomMetricInfo, metricSelector labels.Selector) (*custom_metrics.MetricValue, error) {
+```go mdox-exec="go run ./hack/snippets -d func=*yourProvider.GetMetricByName docs/sample-adapter/pkg/provider/provider.go"
+func (p *yourProvider) GetMetricByName(_ context.Context, name types.NamespacedName, info provider.CustomMetricInfo, _ labels.Selector) (*custom_metrics.MetricValue, error) {
 	value, err := p.valueFor(info)
 	if err != nil {
 		return nil, err
@@ -247,8 +250,8 @@ func (p *yourProvider) GetMetricByName(ctx context.Context, name types.Namespace
 The second fetches multiple metric values, one for each object in a set
 (for example, for the `pods` metric type in the HorizontalPodAutoscaler).
 
-```go
-func (p *yourProvider) GetMetricBySelector(ctx context.Context, namespace string, selector labels.Selector, info provider.CustomMetricInfo, metricSelector labels.Selector) (*custom_metrics.MetricValueList, error) {
+```go mdox-exec="go run ./hack/snippets -d func=*yourProvider.GetMetricBySelector docs/sample-adapter/pkg/provider/provider.go"
+func (p *yourProvider) GetMetricBySelector(_ context.Context, namespace string, selector labels.Selector, info provider.CustomMetricInfo, _ labels.Selector) (*custom_metrics.MetricValueList, error) {
 	totalValue, err := p.valueFor(info)
 	if err != nil {
 		return nil, err
@@ -288,11 +291,10 @@ the metrics provided by your provider.
 
 <summary>First, you&#39;ll need a few imports:</summary>
 
-```go
+```go mdox-exec="go run ./hack/snippets -d package,import docs/sample-adapter/main.go"
 package main
 
 import (
-	"flag"
 	"os"
 
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -303,7 +305,7 @@ import (
 	"sigs.k8s.io/custom-metrics-apiserver/pkg/provider"
 
 	// make this the path to the provider that you just wrote
-	yourprov "example.com/youradapter/pkg/provider"
+	yourprov "sigs.k8s.io/custom-metrics-apiserver/docs/sample-adapter/pkg/provider"
 )
 ```
 
@@ -312,7 +314,7 @@ import (
 With those out of the way, you can make use of the `basecmd.AdapterBase`
 struct to help set up the API server:
 
-```go
+```go mdox-exec="go run ./hack/snippets -d type=YourAdapter,func=main docs/sample-adapter/main.go"
 type YourAdapter struct {
 	basecmd.AdapterBase
 
@@ -327,10 +329,10 @@ func main() {
 	// initialize the flags, with one custom flag for the message
 	cmd := &YourAdapter{}
 	cmd.Flags().StringVar(&cmd.Message, "msg", "starting adapter...", "startup message")
-	// make sure you get the klog flags
-	logs.AddGoFlags(flag.CommandLine)
-	cmd.Flags().AddGoFlagSet(flag.CommandLine)
-	cmd.Flags().Parse(os.Args)
+	logs.AddFlags(cmd.Flags())
+	if err := cmd.Flags().Parse(os.Args); err != nil {
+		klog.Fatalf("unable to parse flags: %v", err)
+	}
 
 	provider := cmd.makeProviderOrDie()
 	cmd.WithCustomMetrics(provider)
@@ -351,7 +353,7 @@ you might need to pass configuration for connecting to the backing metrics
 solution, extra credentials, or advanced configuration. For the provider
 you wrote above, the setup code looks something like this:
 
-```go
+```go mdox-exec="go run ./hack/snippets -d func=*YourAdapter.makeProviderOrDie docs/sample-adapter/main.go"
 func (a *YourAdapter) makeProviderOrDie() provider.CustomMetricsProvider {
 	client, err := a.DynamicClient()
 	if err != nil {
