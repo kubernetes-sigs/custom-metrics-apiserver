@@ -6,8 +6,9 @@ OUT_DIR?=./_output
 GOPATH:=$(shell go env GOPATH)
 
 VERSION?=latest
-
 GOLANGCI_VERSION:=1.52.2
+
+MD_FILES_TO_FORMAT=$(shell find . -name "*.md")
 
 .PHONY: all
 all: build-test-adapter
@@ -69,7 +70,7 @@ update-lint: golangci
 
 HAS_ADDLICENSE:=$(shell which $(GOPATH)/bin/addlicense)
 .PHONY: verify-licenses
-verify-licenses:addlicense
+verify-licenses: addlicense
 	find -type f -name "*.go" | xargs $(GOPATH)/bin/addlicense -check || (echo 'Run "make update-licenses"' && exit 1)
 
 .PHONY: update-licenses
@@ -83,11 +84,30 @@ ifndef HAS_ADDLICENSE
 endif
 
 
+# Documentation
+# -------------
+
+HAS_MDOX:=$(shell which $(GOPATH)/bin/mdox)
+.PHONY: verify-documentation
+verify-documentation: mdox
+	$(GOPATH)/bin/mdox fmt --check --soft-wraps -l $(MD_FILES_TO_FORMAT) || (echo 'Run "make update-documentation"' && exit 1)
+
+.PHONY: update-documentation
+update-documentation: mdox
+	$(GOPATH)/bin/mdox fmt --soft-wraps -l $(MD_FILES_TO_FORMAT)
+
+.PHONY: mdox
+mdox:
+ifndef HAS_MDOX
+	go install -mod=readonly github.com/bwplotka/mdox
+endif
+
+
 # Verify
 # ------
 
 .PHONY: verify
-verify: verify-deps verify-lint verify-licenses verify-generated
+verify: verify-deps verify-lint verify-licenses verify-generated verify-documentation
 
 .PHONY: verify-deps
 verify-deps:

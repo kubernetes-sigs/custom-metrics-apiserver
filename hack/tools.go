@@ -18,6 +18,7 @@
 package tools
 
 import (
+	_ "github.com/bwplotka/mdox"
 	_ "github.com/google/addlicense"
 	_ "k8s.io/kube-openapi/cmd/openapi-gen"
 )

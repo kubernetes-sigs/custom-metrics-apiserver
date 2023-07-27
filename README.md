@@ -38,7 +38,7 @@ There is a test adapter in this repository that can be used for testing
 changes to the repository, as a mock implementation of the APIs for
 automated unit tests, and also as an example implementation.
 
-Note that this adapter **should not** be used for production.  It's for
+Note that this adapter **should not** be used for production. It's for
 writing automated e2e tests and serving as a sample only.
 
 To build and deploy it:

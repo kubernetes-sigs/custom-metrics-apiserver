@@ -1,7 +1,7 @@
 # Getting started with developing your own Custom Metrics API Server
 
 This will walk through writing a very basic custom metrics API server using
-this library. The implementation will be static.  With a real adapter, you'd
+this library. The implementation will be static. With a real adapter, you'd
 generally be reading from some external metrics system instead.
 
 The end result will look similar to the [test adapter](/test-adapter), but
@@ -37,27 +37,27 @@ Put your provider in the `pkg/provider` directory in your repository.
 
 <details>
 
-<summary>To get started, you'll need some imports:</summary>
+<summary>To get started, you&#39;ll need some imports:</summary>
 
 ```go
 package provider
 
 import (
-    "context"
-    "time"
+	"context"
+	"time"
 
-    apimeta "k8s.io/apimachinery/pkg/api/meta"
-    "k8s.io/apimachinery/pkg/api/resource"
-    metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-    "k8s.io/apimachinery/pkg/labels"
-    "k8s.io/apimachinery/pkg/runtime/schema"
-    "k8s.io/apimachinery/pkg/types"
-    "k8s.io/client-go/dynamic"
-    "k8s.io/metrics/pkg/apis/custom_metrics"
+	apimeta "k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/dynamic"
+	"k8s.io/metrics/pkg/apis/custom_metrics"
 
-    "sigs.k8s.io/custom-metrics-apiserver/pkg/provider"
-    "sigs.k8s.io/custom-metrics-apiserver/pkg/provider/defaults"
-    "sigs.k8s.io/custom-metrics-apiserver/pkg/provider/helpers"
+	"sigs.k8s.io/custom-metrics-apiserver/pkg/provider"
+	"sigs.k8s.io/custom-metrics-apiserver/pkg/provider/defaults"
+	"sigs.k8s.io/custom-metrics-apiserver/pkg/provider/helpers"
 )
 ```
 
@@ -68,27 +68,28 @@ called `CustomMetricsProvider`, and looks like this:
 
 ```go
 type CustomMetricsProvider interface {
-    ListAllMetrics() []CustomMetricInfo
+	ListAllMetrics() []CustomMetricInfo
 
-    GetMetricByName(ctx context.Context, name types.NamespacedName, info CustomMetricInfo, metricSelector labels.Selector) (*custom_metrics.MetricValue, error)
-    GetMetricBySelector(ctx context.Context, namespace string, selector labels.Selector, info CustomMetricInfo, metricSelector labels.Selector) (*custom_metrics.MetricValueList, error)}
+	GetMetricByName(ctx context.Context, name types.NamespacedName, info CustomMetricInfo, metricSelector labels.Selector) (*custom_metrics.MetricValue, error)
+	GetMetricBySelector(ctx context.Context, namespace string, selector labels.Selector, info CustomMetricInfo, metricSelector labels.Selector) (*custom_metrics.MetricValueList, error)
+}
 ```
 
 First, there's a method for listing all metrics available at any point in
-time.  It's used to populate the discovery information in the API, so that
-clients can know what metrics are available.  It's not allowed to fail (it
-doesn't return any error), and it should return quickly. 
+time. It's used to populate the discovery information in the API, so that
+clients can know what metrics are available. It's not allowed to fail (it
+doesn't return any error), and it should return quickly.
 
 You can list your metrics (asynchronously) and return them on every request.
-This is not mandatory because kubernetes can request metric values without 
-listing them before, but maybe there are some cases where is useful. To 
+This is not mandatory because kubernetes can request metric values without
+listing them before, but maybe there are some cases where is useful. To
 provide a unified solution, a default implementation is provided thanks to
-`DefaultCustomMetricsProvider` (and `DefaultExternalMetricsProvider` for 
+`DefaultCustomMetricsProvider` (and `DefaultExternalMetricsProvider` for
 external metrics)
 
 Next, you'll need to implement the methods that actually fetch the
 metrics. There are methods for fetching metrics describing arbitrary Kubernetes
-resources, both root-scoped and namespaced-scoped.  Those metrics can
+resources, both root-scoped and namespaced-scoped. Those metrics can
 either be fetched for a single object, or for a list of objects by
 selector.
 
@@ -104,35 +105,33 @@ continuing.</summary>
 When working with these APIs (and Kubernetes APIs in general), you'll
 often see references to resources, kinds, and scope.
 
-Kinds refer to types within the API.  For instance, `Deployment` is
-a kind.  When you fully-qualify a kind, you write it as
-a *group-version-kind*, or *GVK* for short.  The GVK for `Deployment` is
-`apps/v1.Deployment` (or `{Group: "apps", Version: "v1", Kind:
-"Deployment"}` in Go syntax).
+Kinds refer to types within the API. For instance, `Deployment` is
+a kind. When you fully-qualify a kind, you write it as
+a *group-version-kind*, or *GVK* for short. The GVK for `Deployment` is
+`apps/v1.Deployment` (or `{Group: "apps", Version: "v1", Kind: "Deployment"}` in Go syntax).
 
-Resources refer to URLs in an API, in an abstract sense.  Each resource
+Resources refer to URLs in an API, in an abstract sense. Each resource
 has a corresponding kind, but that kind isn't necessarily unique to that
-particular resource.  For instance, the resource `deployments` has kind
-`Deployment`, but so does the subresource `deployments/status`.  On the
+particular resource. For instance, the resource `deployments` has kind
+`Deployment`, but so does the subresource `deployments/status`. On the
 other hand, all the `*/scale` subresources use the kind `Scale` (for the
-most part).  When you fully-qualify a resource, you write it as
-a *group-version-resource*, or GVR for short.  The GVR `{Group: "apps",
-Version: "v1", Resource: "deployments"}` corresponds to the URL form
-`/apis/apps/v1/namespaces/<ns>/deployments`.  Resources may be singular or
+most part). When you fully-qualify a resource, you write it as
+a *group-version-resource*, or GVR for short. The GVR `{Group: "apps", Version: "v1", Resource: "deployments"}` corresponds to the URL form
+`/apis/apps/v1/namespaces/<ns>/deployments`. Resources may be singular or
 plural -- both effectively refer to the same thing.
 
 Sometimes you might partially qualify a particular kind or resource as
-a *group-kind* or *group-resource*, leaving off the versions.  You write
+a *group-kind* or *group-resource*, leaving off the versions. You write
 group-resources as `<resource>.<group>`, like `deployments.apps` in the
 custom metrics API (and in kubectl).
 
 Scope refers to whether or not a particular resource is grouped under
-namespaces.  You say that namespaced resources, like `deployments` are
+namespaces. You say that namespaced resources, like `deployments` are
 *namespace-scoped*, while non-namespaced resources, like `nodes` are
 *root-scoped*.
 
 To figure out which kinds correspond to which resources, and which
-resources have what scope, you use a `RESTMapper`.  The `RESTMapper`
+resources have what scope, you use a `RESTMapper`. The `RESTMapper`
 generally collects its information from *discovery* information, which
 lists which kinds and resources are available in a particular Kubernetes
 cluster.
@@ -140,17 +139,16 @@ cluster.
 #### Quantities
 
 When dealing with metrics, you'll often need to deal with fractional
-numbers.  While many systems use floating point numbers for that purpose,
+numbers. While many systems use floating point numbers for that purpose,
 Kubernetes instead uses a system called *quantities*.
 
-Quantities are whole numbers suffixed with SI suffixes.  You use the `m`
+Quantities are whole numbers suffixed with SI suffixes. You use the `m`
 suffix (for milli-units) to denote numbers with fractional components,
 down the thousandths place.
 
 For instance, `10500m` means `10.5` in decimal notation. To construct
 a new quantity out of a milli-unit value (e.g. millicores or millimeters),
-you'd use the `resource.NewMilliQuantity(valueInMilliUnits,
-resource.DecimalSI)` function.  To construct a new quantity that's a whole
+you'd use the `resource.NewMilliQuantity(valueInMilliUnits, resource.DecimalSI)` function. To construct a new quantity that's a whole
 number, you can either use `NewMilliQuantity` and multiple by `1000`, or
 use the `resource.NewQuantity(valueInWholeUnits, resource.DecimalSI)`
 function.
@@ -169,13 +167,13 @@ already have sufficient information in your metrics pipeline:
 
 ```go
 type yourProvider struct {
-    defaults.DefaultCustomMetricsProvider
-    defaults.DefaultExternalMetricsProvider
-    client dynamic.Interface
-    mapper apimeta.RESTMapper
+	defaults.DefaultCustomMetricsProvider
+	defaults.DefaultExternalMetricsProvider
+	client dynamic.Interface
+	mapper apimeta.RESTMapper
 
-    // just increment values when they're requested
-    values map[provider.CustomMetricInfo]int64
+	// just increment values when they're requested
+	values map[provider.CustomMetricInfo]int64
 }
 
 func NewProvider(client dynamic.Interface, mapper apimeta.RESTMapper) provider.CustomMetricsProvider {
@@ -187,9 +185,9 @@ func NewProvider(client dynamic.Interface, mapper apimeta.RESTMapper) provider.C
 }
 ```
 
-Then, you can implement the methods that fetch the metrics.  In this
+Then, you can implement the methods that fetch the metrics. In this
 walkthrough, those methods will just increment values for metrics as
-they're fetched.  In real adapter, you'd want to fetch metrics from your
+they're fetched. In real adapter, you'd want to fetch metrics from your
 backend in these methods.
 
 First, a couple of helpers, which support doing the fake "fetch"
@@ -198,51 +196,51 @@ operation, and constructing a result object:
 ```go
 // valueFor fetches a value from the fake list and increments it.
 func (p *yourProvider) valueFor(info provider.CustomMetricInfo) (int64, error) {
-    // normalize the value so that you treat plural resources and singular
-    // resources the same (e.g. pods vs pod)
-    info, _, err := info.Normalized(p.mapper)
-    if err != nil {
-        return 0, err
-    }
+	// normalize the value so that you treat plural resources and singular
+	// resources the same (e.g. pods vs pod)
+	info, _, err := info.Normalized(p.mapper)
+	if err != nil {
+		return 0, err
+	}
 
-    value := p.values[info]
-    value += 1
-    p.values[info] = value
+	value := p.values[info]
+	value += 1
+	p.values[info] = value
 
-    return value, nil
+	return value, nil
 }
 
 // metricFor constructs a result for a single metric value.
 func (p *yourProvider) metricFor(value int64, name types.NamespacedName, info provider.CustomMetricInfo) (*custom_metrics.MetricValue, error) {
-    // construct a reference referring to the described object
-    objRef, err := helpers.ReferenceFor(p.mapper, name, info)
-    if err != nil {
-        return nil, err
-    }
+	// construct a reference referring to the described object
+	objRef, err := helpers.ReferenceFor(p.mapper, name, info)
+	if err != nil {
+		return nil, err
+	}
 
-    return &custom_metrics.MetricValue{
-        DescribedObject: objRef,
-        Metric: custom_metrics.MetricIdentifier{
-                Name:  info.Metric,
-        },
-        // you'll want to use the actual timestamp in a real adapter
-        Timestamp:       metav1.Time{time.Now()},
-        Value:           *resource.NewMilliQuantity(value*100, resource.DecimalSI),
-    }, nil
+	return &custom_metrics.MetricValue{
+		DescribedObject: objRef,
+		Metric: custom_metrics.MetricIdentifier{
+			Name: info.Metric,
+		},
+		// you'll want to use the actual timestamp in a real adapter
+		Timestamp: metav1.Time{time.Now()},
+		Value:     *resource.NewMilliQuantity(value*100, resource.DecimalSI),
+	}, nil
 }
 ```
 
-Then, you'll need to implement the two main methods.  The first fetches
+Then, you'll need to implement the two main methods. The first fetches
 a single metric value for one object (for example, for the `object` metric
 type in the HorizontalPodAutoscaler):
 
 ```go
 func (p *yourProvider) GetMetricByName(ctx context.Context, name types.NamespacedName, info provider.CustomMetricInfo, metricSelector labels.Selector) (*custom_metrics.MetricValue, error) {
-    value, err := p.valueFor(info)
-    if err != nil {
-        return nil, err
-    }
-    return p.metricFor(value, name, info)
+	value, err := p.valueFor(info)
+	if err != nil {
+		return nil, err
+	}
+	return p.metricFor(value, name, info)
 }
 ```
 
@@ -251,31 +249,31 @@ The second fetches multiple metric values, one for each object in a set
 
 ```go
 func (p *yourProvider) GetMetricBySelector(ctx context.Context, namespace string, selector labels.Selector, info provider.CustomMetricInfo, metricSelector labels.Selector) (*custom_metrics.MetricValueList, error) {
-    totalValue, err := p.valueFor(info)
-    if err != nil {
-        return nil, err
-    }
+	totalValue, err := p.valueFor(info)
+	if err != nil {
+		return nil, err
+	}
 
-    names, err := helpers.ListObjectNames(p.mapper, p.client, namespace, selector, info)
-    if err != nil {
-        return nil, err
-    }
+	names, err := helpers.ListObjectNames(p.mapper, p.client, namespace, selector, info)
+	if err != nil {
+		return nil, err
+	}
 
-    res := make([]custom_metrics.MetricValue, len(names))
-    for i, name := range names {
-        // in a real adapter, you might want to consider pre-computing the
-        // object reference created in metricFor, instead of recomputing it
-        // for each object.
-        value, err := p.metricFor(100*totalValue/int64(len(res)), types.NamespacedName{Namespace: namespace, Name: name}, info)
-        if err != nil {
-            return nil, err
-        }
-        res[i] = *value
-    }
+	res := make([]custom_metrics.MetricValue, len(names))
+	for i, name := range names {
+		// in a real adapter, you might want to consider pre-computing the
+		// object reference created in metricFor, instead of recomputing it
+		// for each object.
+		value, err := p.metricFor(100*totalValue/int64(len(res)), types.NamespacedName{Namespace: namespace, Name: name}, info)
+		if err != nil {
+			return nil, err
+		}
+		res[i] = *value
+	}
 
-    return &custom_metrics.MetricValueList{
-        Items: res,
-    }, nil
+	return &custom_metrics.MetricValueList{
+		Items: res,
+	}, nil
 }
 ```
 
@@ -288,24 +286,24 @@ the metrics provided by your provider.
 
 <details>
 
-<summary>First, you'll need a few imports:</summary>
+<summary>First, you&#39;ll need a few imports:</summary>
 
 ```go
 package main
 
 import (
-    "flag"
-    "os"
+	"flag"
+	"os"
 
-    "k8s.io/apimachinery/pkg/util/wait"
-    "k8s.io/component-base/logs"
-    "k8s.io/klog/v2"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/component-base/logs"
+	"k8s.io/klog/v2"
 
-    basecmd "sigs.k8s.io/custom-metrics-apiserver/pkg/cmd"
-    "sigs.k8s.io/custom-metrics-apiserver/pkg/provider"
+	basecmd "sigs.k8s.io/custom-metrics-apiserver/pkg/cmd"
+	"sigs.k8s.io/custom-metrics-apiserver/pkg/provider"
 
-    // make this the path to the provider that you just wrote
-    yourprov "example.com/youradapter/pkg/provider"
+	// make this the path to the provider that you just wrote
+	yourprov "example.com/youradapter/pkg/provider"
 )
 ```
 
@@ -316,56 +314,56 @@ struct to help set up the API server:
 
 ```go
 type YourAdapter struct {
-    basecmd.AdapterBase
+	basecmd.AdapterBase
 
-    // the message printed on startup
-    Message string
+	// the message printed on startup
+	Message string
 }
 
 func main() {
-    logs.InitLogs()
-    defer logs.FlushLogs()
+	logs.InitLogs()
+	defer logs.FlushLogs()
 
-    // initialize the flags, with one custom flag for the message
-    cmd := &YourAdapter{}
-    cmd.Flags().StringVar(&cmd.Message, "msg", "starting adapter...", "startup message")
-    // make sure you get the klog flags
-    logs.AddGoFlags(flag.CommandLine)
-    cmd.Flags().AddGoFlagSet(flag.CommandLine)
-    cmd.Flags().Parse(os.Args)
+	// initialize the flags, with one custom flag for the message
+	cmd := &YourAdapter{}
+	cmd.Flags().StringVar(&cmd.Message, "msg", "starting adapter...", "startup message")
+	// make sure you get the klog flags
+	logs.AddGoFlags(flag.CommandLine)
+	cmd.Flags().AddGoFlagSet(flag.CommandLine)
+	cmd.Flags().Parse(os.Args)
 
-    provider := cmd.makeProviderOrDie()
-    cmd.WithCustomMetrics(provider)
-    // you could also set up external metrics support,
-    // if your provider supported it:
-    // cmd.WithExternalMetrics(provider)
+	provider := cmd.makeProviderOrDie()
+	cmd.WithCustomMetrics(provider)
+	// you could also set up external metrics support,
+	// if your provider supported it:
+	// cmd.WithExternalMetrics(provider)
 
-    klog.Infof(cmd.Message)
-    if err := cmd.Run(wait.NeverStop); err != nil {
-        klog.Fatalf("unable to run custom metrics adapter: %v", err)
-    }
+	klog.Infof(cmd.Message)
+	if err := cmd.Run(wait.NeverStop); err != nil {
+		klog.Fatalf("unable to run custom metrics adapter: %v", err)
+	}
 }
 ```
 
 Finally, you'll need to add a bit of setup code for the specifics of your
-provider.  This code will be specific to the options of your provider --
+provider. This code will be specific to the options of your provider --
 you might need to pass configuration for connecting to the backing metrics
-solution, extra credentials, or advanced configuration.  For the provider
+solution, extra credentials, or advanced configuration. For the provider
 you wrote above, the setup code looks something like this:
 
 ```go
 func (a *YourAdapter) makeProviderOrDie() provider.CustomMetricsProvider {
-    client, err := a.DynamicClient()
-    if err != nil {
-        klog.Fatalf("unable to construct dynamic client: %v", err)
-    }
+	client, err := a.DynamicClient()
+	if err != nil {
+		klog.Fatalf("unable to construct dynamic client: %v", err)
+	}
 
-    mapper, err := a.RESTMapper()
-    if err != nil {
-        klog.Fatalf("unable to construct discovery REST mapper: %v", err)
-    }
+	mapper, err := a.RESTMapper()
+	if err != nil {
+		klog.Fatalf("unable to construct discovery REST mapper: %v", err)
+	}
 
-    return yourprov.NewProvider(client, mapper)
+	return yourprov.NewProvider(client, mapper)
 }
 ```
 
@@ -378,6 +376,6 @@ $ go mod tidy
 ## Build the project
 
 Now that you have a working adapter, you can build it with `go build`, and
-stick in it a container, and deploy it onto the cluster.  Check out the
+stick in it a container, and deploy it onto the cluster. Check out the
 [test adapter deployment files](/test-adapter-deploy) for an example of
 how to do that.
