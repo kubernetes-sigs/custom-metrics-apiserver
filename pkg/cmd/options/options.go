@@ -40,7 +40,7 @@ type CustomMetricsAdapterServerOptions struct {
 	Features       *genericoptions.FeatureOptions
 
 	OpenAPIConfig   *openapicommon.Config
-	OpenAPIV3Config *openapicommon.Config
+	OpenAPIV3Config *openapicommon.OpenAPIV3Config
 	EnableMetrics   bool
 }
 
