@@ -72,7 +72,7 @@ func main() {
 	cmd.WithExternalMetrics(testProvider)
 
 	if err := metrics.RegisterMetrics(legacyregistry.Register); err != nil {
-		klog.Fatal("unable to register metrics: %v", err)
+		klog.Fatalf("unable to register metrics: %v", err)
 	}
 
 	klog.Infof(cmd.Message)
