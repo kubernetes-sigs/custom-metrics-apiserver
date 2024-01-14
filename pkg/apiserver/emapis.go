@@ -24,16 +24,19 @@ import (
 	genericapi "k8s.io/apiserver/pkg/endpoints"
 	"k8s.io/apiserver/pkg/endpoints/discovery"
 	genericapiserver "k8s.io/apiserver/pkg/server"
-	"k8s.io/metrics/pkg/apis/external_metrics"
 
 	specificapi "sigs.k8s.io/custom-metrics-apiserver/pkg/apiserver/installer"
 	"sigs.k8s.io/custom-metrics-apiserver/pkg/provider"
 	metricstorage "sigs.k8s.io/custom-metrics-apiserver/pkg/registry/external_metrics"
 )
 
+// TODO: Read from config
+const apiGroupName = "demo.external.metrics.k8s.io"
+
 // InstallExternalMetricsAPI registers the api server in Kube Aggregator
 func (s *CustomMetricsAdapterServer) InstallExternalMetricsAPI() error {
-	groupInfo := genericapiserver.NewDefaultAPIGroupInfo(external_metrics.GroupName, Scheme, metav1.ParameterCodec, Codecs)
+	// Is this api required? or we could just register the wanted api group?
+	groupInfo := genericapiserver.NewDefaultAPIGroupInfo("external.metrics.k8s.io", Scheme, metav1.ParameterCodec, Codecs)
 
 	mainGroupVer := groupInfo.PrioritizedVersions[0]
 	preferredVersionForDiscovery := metav1.GroupVersionForDiscovery{
@@ -53,6 +56,30 @@ func (s *CustomMetricsAdapterServer) InstallExternalMetricsAPI() error {
 	emAPI := s.emAPI(&groupInfo, mainGroupVer)
 	if err := emAPI.InstallREST(s.GenericAPIServer.Handler.GoRestfulContainer); err != nil {
 		return err
+	}
+
+	if apiGroupName != "external.metrics.k8s.io" {
+		groupInfo := genericapiserver.NewDefaultAPIGroupInfo(apiGroupName, Scheme, metav1.ParameterCodec, Codecs)
+
+		mainGroupVer := groupInfo.PrioritizedVersions[0]
+		preferredVersionForDiscovery := metav1.GroupVersionForDiscovery{
+			GroupVersion: mainGroupVer.String(),
+			Version:      mainGroupVer.Version,
+		}
+		groupVersion := metav1.GroupVersionForDiscovery{
+			GroupVersion: mainGroupVer.String(),
+			Version:      mainGroupVer.Version,
+		}
+		apiGroup = metav1.APIGroup{
+			Name:             mainGroupVer.Group,
+			Versions:         []metav1.GroupVersionForDiscovery{groupVersion},
+			PreferredVersion: preferredVersionForDiscovery,
+		}
+
+		emAPI := s.emAPI(&groupInfo, mainGroupVer)
+		if err := emAPI.InstallREST(s.GenericAPIServer.Handler.GoRestfulContainer); err != nil {
+			return err
+		}
 	}
 
 	s.GenericAPIServer.DiscoveryGroupManager.AddGroup(apiGroup)
