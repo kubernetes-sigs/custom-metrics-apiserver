@@ -26,6 +26,7 @@ import (
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	"k8s.io/client-go/informers"
 	cminstall "k8s.io/metrics/pkg/apis/custom_metrics/install"
+	"k8s.io/metrics/pkg/apis/external_metrics"
 	eminstall "k8s.io/metrics/pkg/apis/external_metrics/install"
 
 	"sigs.k8s.io/custom-metrics-apiserver/pkg/apiserver/installer"
@@ -57,6 +58,30 @@ func init() {
 		&metav1.APIGroup{},
 		&metav1.APIResourceList{},
 	)
+
+	if apiGroupName != "external.metrics.k8s.io" {
+		schemeGroupVersion := schema.GroupVersion{Group: apiGroupName, Version: "v1beta1"}
+		metav1.AddToGroupVersion(Scheme, schemeGroupVersion)
+		Scheme.SetVersionPriority(schemeGroupVersion)
+		Scheme.AddKnownTypes(schema.GroupVersion{Group: apiGroupName, Version: runtime.APIVersionInternal},
+			&external_metrics.ExternalMetricValue{},
+			&external_metrics.ExternalMetricValueList{},
+			&metav1.ListOptions{},
+			&metav1.GetOptions{},
+			&metav1.DeleteOptions{},
+			&metav1.CreateOptions{},
+			&metav1.UpdateOptions{},
+		)
+		Scheme.AddKnownTypes(schema.GroupVersion{Group: apiGroupName, Version: "v1beta1"},
+			&external_metrics.ExternalMetricValue{},
+			&external_metrics.ExternalMetricValueList{},
+			&metav1.ListOptions{},
+			&metav1.GetOptions{},
+			&metav1.DeleteOptions{},
+			&metav1.CreateOptions{},
+			&metav1.UpdateOptions{},
+		)
+	}
 }
 
 type Config struct {
