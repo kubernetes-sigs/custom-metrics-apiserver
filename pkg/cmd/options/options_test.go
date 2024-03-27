@@ -111,7 +111,7 @@ func TestApplyTo(t *testing.T) {
 			err := flagSet.Parse(c.args)
 			assert.NoErrorf(t, err, "Error while parsing flags")
 
-			serverConfig := genericapiserver.NewConfig(apiserver.Codecs)
+			serverConfig := genericapiserver.NewRecommendedConfig(apiserver.Codecs)
 			err = o.ApplyTo(serverConfig)
 
 			defer func() {
