@@ -297,8 +297,14 @@ func (b *AdapterBase) Config() (*apiserver.Config, error) {
 			return nil, utilerrors.NewAggregate(errList)
 		}
 
+		// let's initialize informers if they're not already
+		_, err := b.Informers()
+		if err != nil {
+			return nil, err
+		}
+
 		serverConfig := genericapiserver.NewConfig(apiserver.Codecs)
-		err := b.CustomMetricsAdapterServerOptions.ApplyTo(serverConfig, b.clientConfig, b.informers)
+		err = b.CustomMetricsAdapterServerOptions.ApplyTo(serverConfig, b.clientConfig, b.informers)
 		if err != nil {
 			return nil, err
 		}
