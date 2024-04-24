@@ -113,10 +113,10 @@ func TestApplyTo(t *testing.T) {
 			err := flagSet.Parse(c.args)
 			assert.NoErrorf(t, err, "Error while parsing flags")
 
-			serverConfig := genericapiserver.NewConfig(apiserver.Codecs)
-			clientConfig := &rest.Config{}
-			informers := informers.NewSharedInformerFactory(nil, 0)
-			err = o.ApplyTo(serverConfig, clientConfig, informers)
+			serverConfig := genericapiserver.NewRecommendedConfig(apiserver.Codecs)
+			serverConfig.ClientConfig = &rest.Config{}
+			serverConfig.SharedInformerFactory = informers.NewSharedInformerFactory(nil, 0)
+			err = o.ApplyTo(serverConfig)
 
 			defer func() {
 				// Close the listener, if any

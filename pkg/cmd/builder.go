@@ -303,13 +303,15 @@ func (b *AdapterBase) Config() (*apiserver.Config, error) {
 			return nil, err
 		}
 
-		serverConfig := genericapiserver.NewConfig(apiserver.Codecs)
-		err = b.CustomMetricsAdapterServerOptions.ApplyTo(serverConfig, b.clientConfig, b.informers)
+		serverConfig := genericapiserver.NewRecommendedConfig(apiserver.Codecs)
+		serverConfig.ClientConfig = b.clientConfig
+		serverConfig.SharedInformerFactory = b.informers
+		err = b.CustomMetricsAdapterServerOptions.ApplyTo(serverConfig)
 		if err != nil {
 			return nil, err
 		}
 		b.config = &apiserver.Config{
-			GenericConfig: serverConfig,
+			GenericConfig: &serverConfig.Config,
 		}
 	}
 
