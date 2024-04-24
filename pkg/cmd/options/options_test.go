@@ -24,6 +24,8 @@ import (
 
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	genericapiserver "k8s.io/apiserver/pkg/server"
+	"k8s.io/client-go/informers"
+	"k8s.io/client-go/rest"
 
 	"sigs.k8s.io/custom-metrics-apiserver/pkg/apiserver"
 )
@@ -111,7 +113,9 @@ func TestApplyTo(t *testing.T) {
 			err := flagSet.Parse(c.args)
 			assert.NoErrorf(t, err, "Error while parsing flags")
 
-			serverConfig := genericapiserver.NewConfig(apiserver.Codecs)
+			serverConfig := genericapiserver.NewRecommendedConfig(apiserver.Codecs)
+			serverConfig.ClientConfig = &rest.Config{}
+			serverConfig.SharedInformerFactory = informers.NewSharedInformerFactory(nil, 0)
 			err = o.ApplyTo(serverConfig)
 
 			defer func() {
