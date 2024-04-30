@@ -8,7 +8,7 @@ updates:
           - "k8s.io*"
     schedule:
       interval: "weekly"
-  - package-ecosystem: "github-actions"
+  - package-ecosystem: docker
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: weekly
