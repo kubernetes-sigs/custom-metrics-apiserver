@@ -27,9 +27,9 @@ pkg/generated/openapi/%/zz_generated.openapi.go: go.mod go.sum
 	go install -mod=readonly k8s.io/kube-openapi/cmd/openapi-gen
 	$(GOPATH)/bin/openapi-gen --logtostderr \
 	    --go-header-file ./hack/boilerplate.go.txt \
-	    --output-package ./$(@D) \
-	    --output-file-base zz_generated.openapi \
-	    --output-base ./$(@D) \
+	    --output-pkg ./$(@D) \
+	    --output-file zz_generated.openapi.go \
+	    --output-dir ./$(@D) \
 	    -r /dev/null \
 	    $(INPUTS)
 
