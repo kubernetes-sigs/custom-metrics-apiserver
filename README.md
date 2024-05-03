@@ -32,12 +32,13 @@ found in the [test-adapter directory](/test-adapter).
 [Go](https://go.dev/doc/install): this library requires the same version of
 [Go as Kubernetes](https://git.k8s.io/community/contributors/devel/development.md#go).
 
-### Compatibility matrix
+### Compatibility Matrix
 
-| custom-metrics-apiserver |  Kubernetes Apiserver Version |
-|--------------------|:----------------------------:|
-| **v1.29.0**         | v1.29                      |
-| **v1.30.0**         | v1.30                      |
+Custom Metrics Apiserver | Metrics API group/version | Supported Kubernetes version
+---------------|---------------------------|-----------------------------
+v1.30.0          | `metrics.k8s.io/v1beta1`  | 1.19+
+v1.29.0          | `metrics.k8s.io/v1beta1`  | 1.19+
+... | | 
 
 
 ## Test Adapter
