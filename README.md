@@ -36,8 +36,8 @@ found in the [test-adapter directory](/test-adapter).
 
 Custom Metrics Apiserver | Metrics API group/version | Supported Kubernetes version
 ---------------|---------------------------|-----------------------------
-v1.30.0          | `metrics.k8s.io/v1beta1`  | 1.19+
-v1.29.0          | `metrics.k8s.io/v1beta1`  | 1.19+
+v1.30.0          | `metrics.k8s.io/v1beta1`, `custom.metrics.k8s.io/v1beta2`  | 1.19+
+v1.29.0          | `metrics.k8s.io/v1beta1`, `custom.metrics.k8s.io/v1beta2`  | 1.19+
 ... | | 
 
 
