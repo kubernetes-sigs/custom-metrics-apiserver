@@ -32,6 +32,14 @@ found in the [test-adapter directory](/test-adapter).
 [Go](https://go.dev/doc/install): this library requires the same version of
 [Go as Kubernetes](https://git.k8s.io/community/contributors/devel/development.md#go).
 
+### Compatibility matrix
+
+| custom-metrics-apiserver |  Kubernetes Apiserver Version |
+|--------------------|:----------------------------:|
+| **v1.29.0**         | v1.29+                      |
+| **v1.30.0**         | v1.30+                      |
+
+
 ## Test Adapter
 
 There is a test adapter in this repository that can be used for testing
