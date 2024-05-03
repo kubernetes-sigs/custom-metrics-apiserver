@@ -36,8 +36,8 @@ found in the [test-adapter directory](/test-adapter).
 
 | custom-metrics-apiserver |  Kubernetes Apiserver Version |
 |--------------------|:----------------------------:|
-| **v1.29.0**         | v1.29+                      |
-| **v1.30.0**         | v1.30+                      |
+| **v1.29.0**         | v1.29                      |
+| **v1.30.0**         | v1.30                      |
 
 
 ## Test Adapter
