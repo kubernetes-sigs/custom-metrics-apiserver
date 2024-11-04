@@ -17,12 +17,12 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"net/http"
 	"os"
 	"time"
 
 	"github.com/emicklei/go-restful/v3"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/component-base/logs"
 	"k8s.io/component-base/metrics/legacyregistry"
 	"k8s.io/klog/v2"
@@ -86,7 +86,7 @@ func main() {
 		}
 		klog.Fatal(server.ListenAndServe())
 	}()
-	if err := cmd.Run(wait.NeverStop); err != nil {
+	if err := cmd.Run(context.Background()); err != nil {
 		klog.Fatalf("unable to run custom metrics adapter: %v", err)
 	}
 }
