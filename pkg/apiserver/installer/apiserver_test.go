@@ -300,7 +300,7 @@ func TestCustomMetricsAPI(t *testing.T) {
 	for k, v := range cases {
 		response, err := executeRequest(t, k, v, server, &client)
 		if err != nil {
-			t.Errorf(err.Error())
+			t.Errorf("%s", err.Error())
 			continue
 		}
 		if v.ExpectedCount > 0 {
@@ -342,7 +342,7 @@ func TestExternalMetricsAPI(t *testing.T) {
 	for k, v := range cases {
 		response, err := executeRequest(t, k, v, server, &client)
 		if err != nil {
-			t.Errorf(err.Error())
+			t.Errorf("%s", err.Error())
 			continue
 		}
 		if v.ExpectedCount > 0 {
