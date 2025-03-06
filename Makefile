@@ -7,7 +7,7 @@ GOPATH:=$(shell go env GOPATH)
 
 VERSION?=latest
 
-GOLANGCI_VERSION:=1.64.5
+GOLANGCI_VERSION:=1.64.6
 
 .PHONY: all
 all: build-test-adapter
