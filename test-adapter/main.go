@@ -75,7 +75,7 @@ func main() {
 		klog.Fatalf("unable to register metrics: %v", err)
 	}
 
-	klog.Infof(cmd.Message)
+	klog.Infof("%s", cmd.Message)
 	// Set up POST endpoint for writing fake metric values
 	restful.DefaultContainer.Add(webService)
 	go func() {
