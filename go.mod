@@ -7,7 +7,7 @@ toolchain go1.23.6
 require (
 	github.com/emicklei/go-restful/v3 v3.12.1
 	github.com/google/addlicense v1.1.1
-	github.com/spf13/pflag v1.0.5
+	github.com/spf13/pflag v1.0.6
 	github.com/stretchr/testify v1.9.0
 	k8s.io/api v0.32.2
 	k8s.io/apimachinery v0.32.2
