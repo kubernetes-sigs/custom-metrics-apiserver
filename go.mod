@@ -1,8 +1,8 @@
 module sigs.k8s.io/custom-metrics-apiserver
 
-go 1.23.0
+go 1.24.0
 
-toolchain go1.23.6
+toolchain go1.24.2
 
 require (
 	github.com/emicklei/go-restful/v3 v3.12.1
