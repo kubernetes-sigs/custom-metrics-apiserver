@@ -5,7 +5,7 @@ go 1.24.0
 toolchain go1.24.2
 
 require (
-	github.com/emicklei/go-restful/v3 v3.12.1
+	github.com/emicklei/go-restful/v3 v3.12.2
 	github.com/google/addlicense v1.1.1
 	github.com/spf13/pflag v1.0.6
 	github.com/stretchr/testify v1.10.0
