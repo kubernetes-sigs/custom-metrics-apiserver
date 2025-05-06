@@ -41,14 +41,24 @@ automated unit tests, and also as an example implementation.
 Note that this adapter **should not** be used for production.  It's for
 writing automated e2e tests and serving as a sample only.
 
-To build and deploy it:
+To build it:
 
 ```bash
 # build the test-adapter container as $REGISTRY/k8s-test-metrics-adapter-amd64
 export REGISTRY=<some-prefix>
 make test-adapter-container
+```
 
-# push the container up to a registry (optional if your cluster is local)
+To test it locally, install [kind](https://kind.sigs.k8s.io/docs/user/quick-start/),
+then create a cluster, and start the tests:
+```bash
+kind create cluster
+make test-kind
+```
+
+To test it in an arbitraty Kubernetes cluster:
+```bash
+# push the container up to a registry
 docker push $REGISTRY/k8s-test-metrics-adapter-amd64
 
 # launch the adapter using the test adapter deployment manifest
