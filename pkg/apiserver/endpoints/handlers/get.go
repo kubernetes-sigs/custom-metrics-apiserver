@@ -181,5 +181,5 @@ func getRequestOptions(req *http.Request, scope handlers.RequestScope, into runt
 		newQuery[subpathKey] = []string{p}
 		query = newQuery
 	}
-	return scope.ParameterCodec.DecodeParameters(query, scope.Kind.GroupVersion(), into)
+	return scope.DecodeParameters(query, scope.Kind.GroupVersion(), into)
 }
