@@ -109,7 +109,7 @@ func (b *AdapterBase) InstallFlags() {
 			b.CustomMetricsAdapterServerOptions = options.NewCustomMetricsAdapterServerOptions()
 		}
 
-		b.CustomMetricsAdapterServerOptions.AddFlags(b.FlagSet)
+		b.AddFlags(b.FlagSet)
 
 		b.FlagSet.StringVar(&b.RemoteKubeConfigFile, "lister-kubeconfig", b.RemoteKubeConfigFile,
 			"kubeconfig file pointing at the 'core' kubernetes server with enough rights to list "+
@@ -294,7 +294,7 @@ func (b *AdapterBase) Config() (*apiserver.Config, error) {
 		}
 		b.CustomMetricsAdapterServerOptions.OpenAPIV3Config = b.OpenAPIV3Config
 
-		if errList := b.CustomMetricsAdapterServerOptions.Validate(); len(errList) > 0 {
+		if errList := b.Validate(); len(errList) > 0 {
 			return nil, utilerrors.NewAggregate(errList)
 		}
 
@@ -307,7 +307,7 @@ func (b *AdapterBase) Config() (*apiserver.Config, error) {
 		serverConfig := genericapiserver.NewRecommendedConfig(apiserver.Codecs)
 		serverConfig.ClientConfig = b.clientConfig
 		serverConfig.SharedInformerFactory = b.informers
-		err = b.CustomMetricsAdapterServerOptions.ApplyTo(serverConfig)
+		err = b.ApplyTo(serverConfig)
 		if err != nil {
 			return nil, err
 		}

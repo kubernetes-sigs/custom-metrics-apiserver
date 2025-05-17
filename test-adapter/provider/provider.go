@@ -157,10 +157,8 @@ func (p *testingProvider) updateMetric(request *restful.Request, response *restf
 
 	namespace := request.PathParameter("namespace")
 	resourceType := request.PathParameter("resourceType")
-	namespaced := false
-	if len(namespace) > 0 || resourceType == "namespaces" {
-		namespaced = true
-	}
+	namespaced := len(namespace) > 0 || resourceType == "namespaces"
+
 	name := request.PathParameter("name")
 	metricName := request.PathParameter("metric")
 
