@@ -7,7 +7,7 @@ GOPATH:=$(shell go env GOPATH)
 
 VERSION?=latest
 
-GOLANGCI_VERSION:=1.64.8
+GOLANGCI_VERSION:=2.1.6
 
 .PHONY: all
 all: build-test-adapter
@@ -48,7 +48,7 @@ build-test-adapter: update-generated
 # Format and lint
 # ---------------
 
-HAS_GOLANGCI_VERSION:=$(shell $(GOPATH)/bin/golangci-lint version --format=short)
+HAS_GOLANGCI_VERSION:=$(shell $(GOPATH)/bin/golangci-lint version --short)
 .PHONY: golangci
 golangci:
 ifneq ($(HAS_GOLANGCI_VERSION), $(GOLANGCI_VERSION))
