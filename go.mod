@@ -8,7 +8,7 @@ require (
 	github.com/emicklei/go-restful/v3 v3.13.0
 	github.com/google/addlicense v1.2.0
 	github.com/spf13/pflag v1.0.9
-	github.com/stretchr/testify v1.11.0
+	github.com/stretchr/testify v1.11.1
 	k8s.io/api v0.33.4
 	k8s.io/apimachinery v0.33.4
 	k8s.io/apiserver v0.33.4
