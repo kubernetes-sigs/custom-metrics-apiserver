@@ -20,6 +20,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"k8s.io/metrics/pkg/apis/custom_metrics/v1beta2"
+	"k8s.io/metrics/pkg/apis/external_metrics/v1beta1"
 
 	"k8s.io/kube-openapi/pkg/builder"
 
@@ -31,10 +33,10 @@ func TestDefaultOpenAPIConfig(t *testing.T) {
 		adapter := &AdapterBase{}
 		config := adapter.defaultOpenAPIConfig()
 
-		_, err1 := builder.BuildOpenAPIDefinitionsForResources(config, "k8s.io/metrics/pkg/apis/custom_metrics/v1beta2.MetricValue")
+		_, err1 := builder.BuildOpenAPIDefinitionsForResources(config, v1beta2.MetricValue{}.OpenAPIModelName())
 		// Should err, because no provider is installed
 		assert.Error(t, err1)
-		_, err2 := builder.BuildOpenAPIDefinitionsForResources(config, "k8s.io/metrics/pkg/apis/external_metrics/v1beta1.ExternalMetricValue")
+		_, err2 := builder.BuildOpenAPIDefinitionsForResources(config, v1beta1.ExternalMetricValue{}.OpenAPIModelName())
 		assert.Error(t, err2)
 	})
 
@@ -46,10 +48,10 @@ func TestDefaultOpenAPIConfig(t *testing.T) {
 
 		config := adapter.defaultOpenAPIConfig()
 
-		_, err1 := builder.BuildOpenAPIDefinitionsForResources(config, "k8s.io/metrics/pkg/apis/custom_metrics/v1beta2.MetricValue")
+		_, err1 := builder.BuildOpenAPIDefinitionsForResources(config, v1beta2.MetricValue{}.OpenAPIModelName())
 		// Should NOT err
 		assert.NoError(t, err1)
-		_, err2 := builder.BuildOpenAPIDefinitionsForResources(config, "k8s.io/metrics/pkg/apis/external_metrics/v1beta1.ExternalMetricValue")
+		_, err2 := builder.BuildOpenAPIDefinitionsForResources(config, v1beta1.ExternalMetricValue{}.OpenAPIModelName())
 		assert.NoError(t, err2)
 	})
 }
