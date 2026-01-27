@@ -20,8 +20,8 @@ generated_openapis := core custommetrics externalmetrics
 generated_files := $(generated_openapis:%=pkg/generated/openapi/%/zz_generated.openapi.go)
 
 pkg/generated/openapi/core/zz_generated.openapi.go: INPUTS := "k8s.io/apimachinery/pkg/apis/meta/v1" "k8s.io/apimachinery/pkg/api/resource" "k8s.io/apimachinery/pkg/version" "k8s.io/api/core/v1"
-pkg/generated/openapi/custommetrics/zz_generated.openapi.go: INPUTS := "k8s.io/metrics/pkg/apis/custom_metrics" "k8s.io/metrics/pkg/apis/custom_metrics/v1beta1" "k8s.io/metrics/pkg/apis/custom_metrics/v1beta2"
-pkg/generated/openapi/externalmetrics/zz_generated.openapi.go: INPUTS := "k8s.io/metrics/pkg/apis/external_metrics" "k8s.io/metrics/pkg/apis/external_metrics/v1beta1"
+pkg/generated/openapi/custommetrics/zz_generated.openapi.go: INPUTS := "k8s.io/apimachinery/pkg/apis/meta/v1" "k8s.io/apimachinery/pkg/api/resource" "k8s.io/api/core/v1" "k8s.io/metrics/pkg/apis/custom_metrics" "k8s.io/metrics/pkg/apis/custom_metrics/v1beta1" "k8s.io/metrics/pkg/apis/custom_metrics/v1beta2"
+pkg/generated/openapi/externalmetrics/zz_generated.openapi.go: INPUTS := "k8s.io/apimachinery/pkg/apis/meta/v1" "k8s.io/apimachinery/pkg/api/resource" "k8s.io/metrics/pkg/apis/external_metrics" "k8s.io/metrics/pkg/apis/external_metrics/v1beta1"
 
 pkg/generated/openapi/%/zz_generated.openapi.go: go.mod go.sum
 	go install -mod=readonly k8s.io/kube-openapi/cmd/openapi-gen
