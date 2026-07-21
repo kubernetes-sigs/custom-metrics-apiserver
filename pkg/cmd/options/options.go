@@ -95,7 +95,7 @@ func (o *CustomMetricsAdapterServerOptions) ApplyTo(serverConfig *genericapiserv
 	if err := o.SecureServing.ApplyTo(&serverConfig.SecureServing, &serverConfig.LoopbackClientConfig); err != nil {
 		return err
 	}
-	if err := o.Authentication.ApplyTo(&serverConfig.Authentication, serverConfig.SecureServing, nil); err != nil {
+	if err := o.Authentication.ApplyTo(&serverConfig.Authentication, serverConfig.SecureServing, o.OpenAPIConfig); err != nil {
 		return err
 	}
 	if err := o.Authorization.ApplyTo(&serverConfig.Authorization); err != nil {
